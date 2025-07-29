@@ -1,0 +1,3 @@
+[submodule "apriltag-js-standalone"]
+	path = apriltag-js-standalone
+	url = https://github.com/arenaxr/apriltag-js-standalone.git
