@@ -175,30 +175,7 @@
             display: block;
         }
 
-        .detection-info {
-            position: fixed;
-            bottom: 140px;
-            left: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            color: #fff;
-            padding: 15px;
-            border-radius: 8px;
-            display: none;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
-        .detection-info.visible {
-            display: block;
-        }
-
-        .detection-item {
-            margin-bottom: 10px;
-            padding: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-        }
+        /* Detection info styles removed - only canvas visualization shown */
     </style>
 </head>
 
@@ -209,11 +186,7 @@
     </div>
 
     <div class="overflow-menu" id="overflowMenu">
-        <div class="menu-item active" data-family="tag36h11">Tag36h11 (Default)</div>
-        <div class="menu-item" data-family="tag25h9">Tag25h9</div>
-        <div class="menu-item" data-family="tag16h5">Tag16h5</div>
-        <div class="menu-item" data-family="tagCircle21h7">TagCircle21h7</div>
-        <div class="menu-item" data-family="tagStandard41h12">TagStandard41h12</div>
+        <!-- Family switching will be added back later -->
     </div>
 
     <div class="status" id="status"></div>
@@ -223,7 +196,7 @@
         <canvas id="canvasElement"></canvas>
     </div>
 
-    <div class="detection-info" id="detectionInfo"></div>
+    <!-- Detection info removed - only canvas visualization shown -->
 
     <div class="controls">
         <button class="back-button" id="backButton">Back to Camera</button>
