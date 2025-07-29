@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -200,10 +201,11 @@
         }
     </style>
 </head>
+
 <body>
     <div class="header">
         <h1>AprilTag Detector</h1>
-        <button class="menu-button" onclick="toggleMenu()">⋮</button>
+        <button class="menu-button" id="menuButton">⋮</button>
     </div>
 
     <div class="overflow-menu" id="overflowMenu">
@@ -211,10 +213,7 @@
         <div class="menu-item" data-family="tag25h9">Tag25h9</div>
         <div class="menu-item" data-family="tag16h5">Tag16h5</div>
         <div class="menu-item" data-family="tagCircle21h7">TagCircle21h7</div>
-        <div class="menu-item" data-family="tagCircle49h12">TagCircle49h12</div>
-        <div class="menu-item" data-family="tagCustom48h12">TagCustom48h12</div>
         <div class="menu-item" data-family="tagStandard41h12">TagStandard41h12</div>
-        <div class="menu-item" data-family="tagStandard52h13">TagStandard52h13</div>
     </div>
 
     <div class="status" id="status"></div>
@@ -227,12 +226,11 @@
     <div class="detection-info" id="detectionInfo"></div>
 
     <div class="controls">
-        <button class="back-button" id="backButton" onclick="backToCamera()">Back to Camera</button>
-        <button class="capture-button" onclick="captureImage()"></button>
+        <button class="back-button" id="backButton">Back to Camera</button>
+        <button class="capture-button" id="captureButton"></button>
     </div>
 
-    <script src="apriltag_wasm.js"></script>
-    <script src="apriltag.js"></script>
-    <script src="app.js"></script>
+    <script type="module" src="/src/main.ts"></script>
 </body>
+
 </html>

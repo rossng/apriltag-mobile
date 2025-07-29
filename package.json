@@ -1,0 +1,28 @@
+{
+  "name": "apriltag-mobile",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Mobile-first AprilTag detection web app",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "build-wasm": "./build.sh"
+  },
+  "devDependencies": {
+    "@types/emscripten": "^1.40.1",
+    "typescript": "^5.8.3",
+    "vite": "^5.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/apriltag-mobile.git"
+  },
+  "keywords": [
+    "apriltag",
+    "computer-vision",
+    "webassembly",
+    "mobile"
+  ],
+  "license": "MIT"
+}

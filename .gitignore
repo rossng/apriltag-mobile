@@ -1,7 +1,9 @@
-# Generated WASM files (built by build.sh)
-apriltag_wasm.js
-apriltag_wasm.wasm
-apriltag.js
+# Generated WASM files (built by build.sh) - only in public/
+public/apriltag_wasm.js
+public/apriltag_wasm.wasm
+
+# Vite build output
+dist/
 
 # OS generated files
 .DS_Store

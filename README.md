@@ -26,26 +26,28 @@ A mobile-first web application for detecting AprilTags using your device's camer
 
 ## AprilTag Families Supported
 
-- **tag36h11** (Default) - Most common family
-- **tag25h9** - Smaller family with 25 tags
-- **tag16h5** - Compact family with 16 tags
-- **tagCircle21h7** - Circular tags
-- **tagCircle49h12** - Larger circular family
-- **tagCustom48h12** - Custom 48-tag family
-- **tagStandard41h12** - Standard 41-tag family
-- **tagStandard52h13** - Standard 52-tag family
+The following AprilTag families are compiled into the WASM library:
+
+- **tag36h11** (Default) - Most common family with 587 tags
+- **tag25h9** - Family with 35 tags, good balance of performance and robustness
+- **tag16h5** - Compact family with 30 tags, best performance
+- **tagCircle21h7** - Circular tags with 38 tags
+- **tagStandard41h12** - Standard family with 2115 tags
+
+**Note:** The detector is currently configured to use tag36h11 by default. While other families are compiled in, the current JavaScript wrapper may need modifications to support family switching at runtime.
 
 ## Development
 
-The app consists of:
+The app is built with Vite and consists of:
 
 - `index.html` - Main HTML structure with mobile-optimized CSS
-- `app.js` - Core application logic and camera handling
+- `src/main.js` - Main entry point and global function setup
+- `src/app.js` - Core application logic and camera handling (ES module)
+- `src/apriltag.js` - JavaScript API wrapper for WASM (ES module)
 - `apriltag-js-standalone/` - Git submodule containing the AprilTag WASM library
-- Built files (generated during deployment):
-  - `apriltag_wasm.js` - WASM wrapper
-  - `apriltag_wasm.wasm` - Compiled AprilTag library
-  - `apriltag.js` - JavaScript API wrapper
+- Built files (generated during build):
+  - `public/apriltag_wasm.js` - WASM wrapper
+  - `public/apriltag_wasm.wasm` - Compiled AprilTag library
 
 ### Local Development
 
@@ -84,26 +86,24 @@ The app consists of:
    - Check for Emscripten installation
    - Initialize submodules
    - Compile the AprilTag C library to WebAssembly
-   - Copy the generated files to the project root
+   - Copy the generated files to the public/ directory
+   
+   **Important**: The WASM files must be built before the app will work. Without them, the app will show an error message.
 
-4. Serve the files using a local web server (required for camera access):
+4. Start the development server:
    ```bash
    # Using Nix (recommended)
    nix run .#serve
    
    # Or manually:
-   # Using Python 3
-   python -m http.server 8000
-   
-   # Using Node.js (with http-server)
-   npx http-server
+   npm run dev
    ```
 
 5. Open in your mobile browser or use browser dev tools mobile view
 
 ### Real AprilTag Detection
 
-This app uses the real AprilTag WASM library from [apriltag-js-standalone](https://github.com/arenaxr/apriltag-js-standalone):
+This app uses the real AprilTag WASM library from [apriltag-js-standalone](https://github.com/rossng/apriltag-js-standalone):
 
 1. The library is included as a git submodule
 2. Use `./build.sh` to compile the WASM files locally
@@ -111,7 +111,7 @@ This app uses the real AprilTag WASM library from [apriltag-js-standalone](https
 4. Currently supports the tag36h11 AprilTag family
 5. Includes pose estimation with camera parameters
 
-**Note:** The WASM files (`apriltag_wasm.js`, `apriltag_wasm.wasm`, `apriltag.js`) are generated during build and are not tracked in git. They will be automatically compiled during GitHub Pages deployment.
+**Note:** The WASM files (`apriltag_wasm.js`, `apriltag_wasm.wasm`) are generated during build and stored in the `public/` directory. They are not tracked in git and will be automatically compiled during GitHub Pages deployment.
 
 ## Deployment
 
