@@ -53,33 +53,11 @@ fi
 # Return to root directory
 cd ..
 
-# Copy the built files to the root directory
-echo "📋 Copying build artifacts..."
-cp apriltag-js-standalone/html/apriltag_wasm.js ./
-cp apriltag-js-standalone/html/apriltag_wasm.wasm ./
-cp apriltag-js-standalone/html/apriltag.js ./
-
-# Verify the files were copied and are not empty
-for file in apriltag_wasm.js apriltag_wasm.wasm apriltag.js; do
-    if [ ! -f "$file" ]; then
-        echo "❌ Error: Failed to copy $file"
-        exit 1
-    fi
-    
-    size=$(wc -c < "$file")
-    if [ "$size" -lt 100 ]; then
-        echo "❌ Error: $file is too small ($size bytes), likely contains error content"
-        exit 1
-    fi
-    
-    echo "✅ $file: $size bytes"
-done
-
 echo "🎉 Build completed successfully!"
 echo ""
-echo "Generated files:"
+echo "Generated files in public/:"
 echo "  - apriltag_wasm.js (WASM wrapper)"
 echo "  - apriltag_wasm.wasm (compiled AprilTag library)"
-echo "  - apriltag.js (JavaScript API)"
 echo ""
-echo "You can now serve the files locally or deploy to a web server."
+echo "You can now run the Vite development server:"
+echo "  npm run dev"

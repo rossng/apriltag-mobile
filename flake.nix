@@ -6,8 +6,14 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
       in
@@ -18,15 +24,13 @@
             emscripten
             python3
             nodejs
-            
+            nodePackages.npm
+
             # Development tools
             git
             gnumake
             gcc
-            
-            # Optional: useful for development
-            http-server
-            
+
             # Shell utilities
             which
             curl
@@ -44,26 +48,28 @@
             echo ""
             echo "Quick start:"
             echo "  1. Initialize submodules: git submodule update --init --recursive"
-            echo "  2. Build WASM library: ./build.sh"
-            echo "  3. Start dev server: npx http-server"
+            echo "  2. Install dependencies: npm install"
+            echo "  3. Build WASM library: ./build.sh"
+            echo "  4. Start dev server: npm run dev"
             echo ""
             echo "The build environment is ready! 🎯"
             echo ""
-            
+
             # Ensure git submodules are initialized
             if [ ! -d "apriltag-js-standalone/.git" ]; then
               echo "⚠️  Submodules not initialized. Run: git submodule update --init --recursive"
             fi
-            
+
             # Check if WASM files exist
-            if [ ! -f "apriltag_wasm.js" ] || [ ! -f "apriltag_wasm.wasm" ]; then
-              echo "💡 WASM files not found. Run './build.sh' to compile them."
+            if [ ! -f "public/apriltag_wasm.js" ] || [ ! -f "public/apriltag_wasm.wasm" ]; then
+              echo "⚠️  WASM files not found. The app will not work without them."
+              echo "💡 Run './build.sh' to compile the AprilTag WASM library."
             fi
           '';
 
           # Environment variables
           EMSCRIPTEN_ROOT = "${pkgs.emscripten}/share/emscripten";
-          
+
           # Make sure the Emscripten tools are available
           EM_CONFIG = "${pkgs.emscripten}/share/emscripten/.emscripten";
         };
@@ -73,6 +79,23 @@
           type = "app";
           program = "${pkgs.writeShellScript "build-apriltag" ''
             set -e
+            export PATH=${
+              pkgs.lib.makeBinPath (
+                with pkgs;
+                [
+                  emscripten
+                  git
+                  gnumake
+                  gcc
+                  which
+                  curl
+                  typescript
+                ]
+              )
+            }:$PATH
+            export EMSCRIPTEN_ROOT="${pkgs.emscripten}/share/emscripten"
+            export EM_CONFIG="${pkgs.emscripten}/share/emscripten/.emscripten"
+
             echo "Building AprilTag WASM with Nix environment..."
             ${self.devShells.${system}.default.shellHook}
             exec ./build.sh
@@ -84,17 +107,40 @@
           type = "app";
           program = "${pkgs.writeShellScript "serve-apriltag" ''
             set -e
-            echo "Starting development server..."
-            if [ ! -f "apriltag_wasm.js" ]; then
+            export PATH=${
+              pkgs.lib.makeBinPath (
+                with pkgs;
+                [
+                  nodejs
+                  nodePackages.npm
+                  emscripten
+                  git
+                  gnumake
+                  gcc
+                  which
+                  curl
+                ]
+              )
+            }:$PATH
+            export EMSCRIPTEN_ROOT="${pkgs.emscripten}/share/emscripten"
+            export EM_CONFIG="${pkgs.emscripten}/share/emscripten/.emscripten"
+
+            echo "Starting Vite development server..."
+            if [ ! -f "public/apriltag_wasm.js" ]; then
               echo "WASM files not found. Building first..."
               ./build.sh
             fi
-            echo "Server will be available at http://localhost:8080"
-            exec ${pkgs.nodejs}/bin/npx http-server -p 8080 -c-1
+            if [ ! -d "node_modules" ]; then
+              echo "Installing npm dependencies..."
+              npm install
+            fi
+            echo "Starting development server..."
+            exec npm run dev
           ''}";
         };
 
         # Default app points to build
         apps.default = self.apps.${system}.build;
-      });
+      }
+    );
 }
