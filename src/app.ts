@@ -20,7 +20,7 @@ export class AprilTagDetector {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private stream: MediaStream | null = null;
-  private currentFamily: string = "tag36h11";
+  // Family switching will be added back later
   private detector: MainModule;
   private isProcessing: boolean = false;
 
@@ -79,16 +79,7 @@ export class AprilTagDetector {
       }
     });
 
-    // Family selection
-    document.querySelectorAll(".menu-item").forEach((item) => {
-      item.addEventListener("click", (e: Event) => {
-        const target = e.target as HTMLElement;
-        if (target.dataset.family) {
-          this.selectFamily(target.dataset.family);
-        }
-        document.getElementById("overflowMenu")?.classList.remove("active");
-      });
-    });
+    // Family selection removed - will be added back later
 
     // Prevent video from pausing on page visibility change
     document.addEventListener("visibilitychange", () => {
@@ -98,25 +89,7 @@ export class AprilTagDetector {
     });
   }
 
-  selectFamily(family: string): void {
-    // Update UI
-    document.querySelectorAll(".menu-item").forEach((item) => {
-      item.classList.remove("active");
-    });
-    document
-      .querySelector(`[data-family="${family}"]`)
-      ?.classList.add("active");
-
-    // Update current family
-    this.currentFamily = family;
-
-    // Show info about family switch
-    this.showStatus(`Switched to ${family} family`);
-    setTimeout(() => this.hideStatus(), 2000);
-
-    // Note: The current AprilTag WASM implementation is initialized with tag36h11
-    // Runtime family switching would require reinitializing the detector
-  }
+  // Family selection method removed - will be added back later
 
   enableCaptureButton(): void {
     const captureButton = document.querySelector(
@@ -232,7 +205,6 @@ export class AprilTagDetector {
       }
 
       this.drawDetections(detections);
-      this.showDetectionInfo(detections);
       this.hideStatus();
     } catch (error) {
       console.error("Error processing image:", error);
@@ -297,56 +269,12 @@ export class AprilTagDetector {
     });
   }
 
-  showDetectionInfo(detections: Detection[]): void {
-    const infoDiv = document.getElementById("detectionInfo");
-    if (!infoDiv) return;
-
-    if (detections.length === 0) {
-      infoDiv.innerHTML =
-        '<div class="detection-item">No AprilTags detected</div>';
-    } else {
-      const items = detections
-        .map((detection) => {
-          let html = `
-                    <div class="detection-item">
-                        <strong>Tag ID:</strong> ${detection.id}<br>
-                        <strong>Size:</strong> ${
-                          detection.size
-                            ? (detection.size * 1000).toFixed(1) + "mm"
-                            : "Unknown"
-                        }<br>
-                        <strong>Center:</strong> (${Math.round(
-                          detection.center.x
-                        )}, ${Math.round(detection.center.y)})<br>
-                `;
-
-          // Add pose information if available
-          if (detection.pose) {
-            const t = detection.pose.t;
-            const distance = Math.sqrt(t[0] * t[0] + t[1] * t[1] + t[2] * t[2]);
-            html += `<strong>Distance:</strong> ${(distance * 1000).toFixed(
-              1
-            )}mm<br>`;
-            html += `<strong>Pose Error:</strong> ${detection.pose.e.toFixed(
-              6
-            )}`;
-          }
-
-          html += "</div>";
-          return html;
-        })
-        .join("");
-      infoDiv.innerHTML = items;
-    }
-
-    infoDiv.classList.add("visible");
-  }
+  // Detection info display removed - only canvas visualization shown
 
   backToCamera(): void {
     this.video.style.display = "block";
     this.canvas.style.display = "none";
     document.getElementById("backButton")?.classList.remove("visible");
-    document.getElementById("detectionInfo")?.classList.remove("visible");
   }
 
   showStatus(message: string): void {
