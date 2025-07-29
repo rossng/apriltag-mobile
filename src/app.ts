@@ -20,7 +20,7 @@ export class AprilTagDetector {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private stream: MediaStream | null = null;
-  // Family switching will be added back later
+  private currentFamily: string = "tag36h11";
   private detector: MainModule;
   private isProcessing: boolean = false;
 
@@ -79,7 +79,16 @@ export class AprilTagDetector {
       }
     });
 
-    // Family selection removed - will be added back later
+    // Family selection menu items
+    const menuItems = document.querySelectorAll('.menu-item[data-family]');
+    menuItems.forEach(item => {
+      item.addEventListener('click', (e) => {
+        const family = (e.target as HTMLElement).getAttribute('data-family');
+        if (family && family !== this.currentFamily) {
+          this.switchFamily(family);
+        }
+      });
+    });
 
     // Prevent video from pausing on page visibility change
     document.addEventListener("visibilitychange", () => {
@@ -89,7 +98,35 @@ export class AprilTagDetector {
     });
   }
 
-  // Family selection method removed - will be added back later
+  switchFamily(family: string): void {
+    // Use cwrap to call the C function
+    const setFamily = this.detector.cwrap(
+      'atagjs_set_family',
+      'number',
+      ['string']
+    );
+    
+    const result = setFamily(family);
+    
+    if (result === 0) {
+      this.currentFamily = family;
+      this.showStatus(`Switched to ${family}`);
+      
+      // Update active menu item
+      document.querySelectorAll('.menu-item[data-family]').forEach(item => {
+        if (item.getAttribute('data-family') === family) {
+          item.classList.add('active');
+        } else {
+          item.classList.remove('active');
+        }
+      });
+      
+      // Hide menu
+      document.getElementById("overflowMenu")?.classList.remove("active");
+    } else {
+      this.showStatus(`Failed to switch to ${family}`);
+    }
+  }
 
   enableCaptureButton(): void {
     const captureButton = document.querySelector(
