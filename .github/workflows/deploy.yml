@@ -36,15 +36,7 @@ jobs:
       - uses: cachix/install-nix-action@v31
         with:
           nix_path: nixpkgs=channel:nixos-unstable
-      - run: nix-build
-
-      - name: Build AprilTag WASM
-        run: nix run .#build
-
-      - name: Verify WASM build output
-        run: |
-          ls -la public/*.js public/*.wasm
-          echo "AprilTag WASM files built successfully"
+      - run: nix run .#build
 
       - name: Build Vite app
         run: npm run build
