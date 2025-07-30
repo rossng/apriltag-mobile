@@ -55,7 +55,7 @@ cd ..
 
 echo "🎉 Build completed successfully!"
 echo ""
-echo "Generated files in public/:"
+echo "Generated files:"
 echo "  - apriltag_wasm.js (WASM wrapper)"
 echo "  - apriltag_wasm.wasm (compiled AprilTag library)"
 echo ""
