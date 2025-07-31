@@ -11,10 +11,6 @@ interface Detection {
   };
 }
 
-interface AprilTagDetectorWasm {
-  detect(grayData: Uint8Array, width: number, height: number): Detection[];
-}
-
 export class AprilTagDetector {
   private video: HTMLVideoElement;
   private canvas: HTMLCanvasElement;
@@ -80,10 +76,10 @@ export class AprilTagDetector {
     });
 
     // Family selection menu items
-    const menuItems = document.querySelectorAll('.menu-item[data-family]');
-    menuItems.forEach(item => {
-      item.addEventListener('click', (e) => {
-        const family = (e.target as HTMLElement).getAttribute('data-family');
+    const menuItems = document.querySelectorAll(".menu-item[data-family]");
+    menuItems.forEach((item) => {
+      item.addEventListener("click", (e) => {
+        const family = (e.target as HTMLElement).getAttribute("data-family");
         if (family && family !== this.currentFamily) {
           this.switchFamily(family);
         }
@@ -100,27 +96,25 @@ export class AprilTagDetector {
 
   switchFamily(family: string): void {
     // Use cwrap to call the C function
-    const setFamily = this.detector.cwrap(
-      'atagjs_set_family',
-      'number',
-      ['string']
-    );
-    
+    const setFamily = this.detector.cwrap("atagjs_set_family", "number", [
+      "string",
+    ]);
+
     const result = setFamily(family);
-    
+
     if (result === 0) {
       this.currentFamily = family;
       this.showStatus(`Switched to ${family}`);
-      
+
       // Update active menu item
-      document.querySelectorAll('.menu-item[data-family]').forEach(item => {
-        if (item.getAttribute('data-family') === family) {
-          item.classList.add('active');
+      document.querySelectorAll(".menu-item[data-family]").forEach((item) => {
+        if (item.getAttribute("data-family") === family) {
+          item.classList.add("active");
         } else {
-          item.classList.remove('active');
+          item.classList.remove("active");
         }
       });
-      
+
       // Hide menu
       document.getElementById("overflowMenu")?.classList.remove("active");
     } else {
