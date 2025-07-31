@@ -130,6 +130,7 @@ export class AprilTagApp extends LitElement {
       justify-content: center;
       opacity: 0.5;
       pointer-events: none;
+      position: relative;
     }
 
     .capture-button.enabled {
@@ -141,29 +142,12 @@ export class AprilTagApp extends LitElement {
       transform: scale(0.95);
     }
 
-    .capture-button::after {
-      content: "";
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      background: #fff;
-      border: 2px solid #000;
+    .capture-button svg {
+      width: 28px;
+      height: 28px;
+      fill: #000;
     }
 
-    .back-button {
-      background: rgba(255, 255, 255, 0.2);
-      border: none;
-      color: #fff;
-      padding: 15px 25px;
-      border-radius: 25px;
-      cursor: pointer;
-      font-size: 16px;
-      display: none;
-    }
-
-    .back-button.visible {
-      display: block;
-    }
 
     .status {
       position: fixed;
@@ -239,15 +223,18 @@ export class AprilTagApp extends LitElement {
 
       <div class="controls">
         <button
-          class="back-button ${this.showDetections ? "visible" : ""}"
-          @click=${this.backToCamera}
-        >
-          Back to Camera
-        </button>
-        <button
           class="capture-button ${this.captureEnabled ? "enabled" : ""}"
-          @click=${this.captureImage}
-        ></button>
+          @click=${this.showDetections ? this.backToCamera : this.captureImage}
+        >
+          ${this.showDetections
+            ? html`<svg viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z"/>
+              </svg>`
+            : html`<svg viewBox="0 0 24 24">
+                <rect x="6" y="4" width="4" height="16"/>
+                <rect x="14" y="4" width="4" height="16"/>
+              </svg>`}
+        </button>
       </div>
     `;
   }
