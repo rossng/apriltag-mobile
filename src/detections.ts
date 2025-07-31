@@ -6,6 +6,7 @@ import type { Detection } from "./detector";
 export class Detections extends LitElement {
   @property({ type: Array }) detections: Detection[] = [];
   @property({ type: Object }) imageData?: ImageData;
+  @property({ type: String }) fillMode: 'cover' | 'contain' = 'contain';
 
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
@@ -22,10 +23,14 @@ export class Detections extends LitElement {
       height: 100%;
       object-fit: contain;
     }
+
+    canvas.cover {
+      object-fit: cover;
+    }
   `;
 
   render() {
-    return html` <canvas></canvas> `;
+    return html` <canvas class="${this.fillMode === 'cover' ? 'cover' : ''}"></canvas> `;
   }
 
   firstUpdated() {
@@ -36,7 +41,8 @@ export class Detections extends LitElement {
   updated(changedProperties: Map<string, any>) {
     if (
       changedProperties.has("imageData") ||
-      changedProperties.has("detections")
+      changedProperties.has("detections") ||
+      changedProperties.has("fillMode")
     ) {
       this.drawCanvas();
     }
