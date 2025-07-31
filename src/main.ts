@@ -1,36 +1,16 @@
-import { AprilTagDetector } from "./app.ts";
-import createDetector, { MainModule } from "./apriltag/apriltag_wasm.js";
+import './app';
+import createDetector from "./apriltag/apriltag_wasm.js";
 
-declare global {
-  interface Window {
-    detector?: AprilTagDetector;
+async function initApp() {
+  try {
+    const detector = await createDetector();
+    const app = document.createElement('apriltag-app');
+    (app as any).detector = detector;
+    document.body.appendChild(app);
+  } catch (error) {
+    console.error('Error initializing app:', error);
   }
 }
 
-const detector: MainModule = await createDetector();
-window.detector = new AprilTagDetector(detector);
-window.detector.init();
-
-function setupEventListeners(): void {
-  const menuButton = document.getElementById("menuButton");
-  const captureButton = document.getElementById("captureButton");
-  const backButton = document.getElementById("backButton");
-
-  menuButton?.addEventListener("click", () => {
-    const menu = document.getElementById("overflowMenu");
-    menu?.classList.toggle("active");
-  });
-
-  captureButton?.addEventListener("click", () => {
-    if (window.detector) {
-      window.detector.captureImage();
-    }
-  });
-
-  backButton?.addEventListener("click", () => {
-    if (window.detector) {
-      window.detector.backToCamera();
-    }
-  });
-}
-setupEventListeners();
+// Initialize when the script loads
+initApp();
