@@ -1,4 +1,7 @@
+import { LitElement, html, css } from "lit";
+import { customElement, property, state } from "lit/decorators.js";
 import { MainModule } from "./apriltag/apriltag_wasm";
+import "./family-selector";
 
 interface Detection {
   id: number;
@@ -11,34 +14,232 @@ interface Detection {
   };
 }
 
-export class AprilTagDetector {
-  private video: HTMLVideoElement;
-  private canvas: HTMLCanvasElement;
-  private ctx: CanvasRenderingContext2D;
+@customElement("apriltag-app")
+export class AprilTagApp extends LitElement {
+  @property({ type: Object }) detector!: MainModule;
+
+  @state() private statusMessage = "";
+  @state() private showStatus = false;
+  @state() private currentFamily = "tag36h11";
+  @state() private showCanvas = false;
+  @state() private isProcessing = false;
+  @state() private captureEnabled = false;
+
+  private video!: HTMLVideoElement;
+  private canvas!: HTMLCanvasElement;
+  private ctx!: CanvasRenderingContext2D;
   private stream: MediaStream | null = null;
-  private currentFamily: string = "tag36h11";
-  private detector: MainModule;
-  private isProcessing: boolean = false;
 
-  constructor(detector: MainModule) {
-    this.video = document.getElementById("videoElement") as HTMLVideoElement;
-    this.canvas = document.getElementById("canvasElement") as HTMLCanvasElement;
+  static styles = css`
+    :host {
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        sans-serif;
+      background: #000;
+      color: #fff;
+    }
+
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(10px);
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    family-selector {
+      position: relative;
+    }
+
+    .camera-container {
+      position: fixed;
+      top: 60px;
+      left: 0;
+      right: 0;
+      bottom: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #222;
+    }
+
+    video,
+    canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    video {
+      object-fit: cover;
+    }
+
+    canvas {
+      object-fit: contain;
+      display: none;
+    }
+
+    canvas.visible {
+      display: block;
+    }
+
+    video.hidden {
+      display: none;
+    }
+
+    .controls {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(10px);
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    .capture-button {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: #fff;
+      border: 4px solid #ccc;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .capture-button.enabled {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .capture-button:active {
+      transform: scale(0.95);
+    }
+
+    .capture-button::after {
+      content: "";
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: #fff;
+      border: 2px solid #000;
+    }
+
+    .back-button {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: #fff;
+      padding: 15px 25px;
+      border-radius: 25px;
+      cursor: pointer;
+      font-size: 16px;
+      display: none;
+    }
+
+    .back-button.visible {
+      display: block;
+    }
+
+    .status {
+      position: fixed;
+      top: 80px;
+      left: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      text-align: center;
+      display: none;
+      z-index: 999;
+    }
+
+    .status.visible {
+      display: block;
+    }
+  `;
+
+  render() {
+    return html`
+      <div class="header">
+        <h1>AprilTag Detector</h1>
+        <family-selector
+          .currentFamily=${this.currentFamily}
+          @family-selected=${this.handleFamilySelected}
+        ></family-selector>
+      </div>
+
+      <div class="status ${this.showStatus ? "visible" : ""}">
+        ${this.statusMessage}
+      </div>
+
+      <div class="camera-container">
+        <video
+          class="${this.showCanvas ? "hidden" : ""}"
+          autoplay
+          muted
+          playsinline
+        ></video>
+        <canvas class="${this.showCanvas ? "visible" : ""}"></canvas>
+      </div>
+
+      <div class="controls">
+        <button
+          class="back-button ${this.showCanvas ? "visible" : ""}"
+          @click=${this.backToCamera}
+        >
+          Back to Camera
+        </button>
+        <button
+          class="capture-button ${this.captureEnabled ? "enabled" : ""}"
+          @click=${this.captureImage}
+        ></button>
+      </div>
+    `;
+  }
+
+  async firstUpdated() {
+    this.video = this.shadowRoot!.querySelector("video")!;
+    this.canvas = this.shadowRoot!.querySelector("canvas")!;
     this.ctx = this.canvas.getContext("2d")!;
-    this.detector = detector;
 
-    this.init();
+    await this.init();
   }
 
   async init(): Promise<void> {
     this.detector._atagjs_init();
     await this.initializeCamera();
-    this.setupEventListeners();
-    this.enableCaptureButton();
+    this.setupGlobalListeners();
+    this.captureEnabled = true;
   }
 
   async initializeCamera(): Promise<void> {
     try {
-      this.showStatus("Requesting camera permission...");
+      this.setStatus("Requesting camera permission...");
 
       const constraints: MediaStreamConstraints = {
         video: {
@@ -52,40 +253,17 @@ export class AprilTagDetector {
       this.video.srcObject = this.stream;
 
       this.video.addEventListener("loadedmetadata", () => {
-        this.hideStatus();
+        this.hideStatusMessage();
       });
     } catch (error) {
       console.error("Error accessing camera:", error);
-      this.showStatus(
+      this.setStatus(
         "Camera access denied. Please allow camera permissions and refresh."
       );
     }
   }
 
-  setupEventListeners(): void {
-    // Menu functionality
-    document.addEventListener("click", (e: Event) => {
-      const menu = document.getElementById("overflowMenu");
-      const target = e.target as HTMLElement;
-      if (
-        !target.closest(".menu-button") &&
-        !target.closest(".overflow-menu")
-      ) {
-        menu?.classList.remove("active");
-      }
-    });
-
-    // Family selection menu items
-    const menuItems = document.querySelectorAll(".menu-item[data-family]");
-    menuItems.forEach((item) => {
-      item.addEventListener("click", (e) => {
-        const family = (e.target as HTMLElement).getAttribute("data-family");
-        if (family && family !== this.currentFamily) {
-          this.switchFamily(family);
-        }
-      });
-    });
-
+  setupGlobalListeners(): void {
     // Prevent video from pausing on page visibility change
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible" && this.stream) {
@@ -94,8 +272,12 @@ export class AprilTagDetector {
     });
   }
 
+  handleFamilySelected(e: CustomEvent): void {
+    const { familyId } = e.detail;
+    this.switchFamily(familyId);
+  }
+
   switchFamily(family: string): void {
-    // Use cwrap to call the C function
     const setFamily = this.detector.cwrap("atagjs_set_family", "number", [
       "string",
     ]);
@@ -104,41 +286,9 @@ export class AprilTagDetector {
 
     if (result === 0) {
       this.currentFamily = family;
-      this.showStatus(`Switched to ${family}`);
-
-      // Update active menu item
-      document.querySelectorAll(".menu-item[data-family]").forEach((item) => {
-        if (item.getAttribute("data-family") === family) {
-          item.classList.add("active");
-        } else {
-          item.classList.remove("active");
-        }
-      });
-
-      // Hide menu
-      document.getElementById("overflowMenu")?.classList.remove("active");
+      this.setStatus(`Switched to ${family}`);
     } else {
-      this.showStatus(`Failed to switch to ${family}`);
-    }
-  }
-
-  enableCaptureButton(): void {
-    const captureButton = document.querySelector(
-      ".capture-button"
-    ) as HTMLElement;
-    if (captureButton) {
-      captureButton.style.opacity = "1";
-      captureButton.style.pointerEvents = "auto";
-    }
-  }
-
-  disableCaptureButton(): void {
-    const captureButton = document.querySelector(
-      ".capture-button"
-    ) as HTMLElement;
-    if (captureButton) {
-      captureButton.style.opacity = "0.5";
-      captureButton.style.pointerEvents = "none";
+      this.setStatus(`Failed to switch to ${family}`);
     }
   }
 
@@ -147,7 +297,7 @@ export class AprilTagDetector {
 
     try {
       this.isProcessing = true;
-      this.showStatus("Capturing image...");
+      this.setStatus("Capturing image...");
 
       // Set canvas size to match video
       this.canvas.width = this.video.videoWidth;
@@ -163,15 +313,13 @@ export class AprilTagDetector {
       );
 
       // Switch to canvas view
-      this.video.style.display = "none";
-      this.canvas.style.display = "block";
-      document.getElementById("backButton")?.classList.add("visible");
+      this.showCanvas = true;
 
       // Process the image
       await this.processImage();
     } catch (error) {
       console.error("Error capturing image:", error);
-      this.showStatus("Failed to capture image. Please try again.");
+      this.setStatus("Failed to capture image. Please try again.");
     } finally {
       this.isProcessing = false;
     }
@@ -179,7 +327,7 @@ export class AprilTagDetector {
 
   async processImage(): Promise<void> {
     try {
-      this.showStatus("Detecting AprilTags...");
+      this.setStatus("Detecting AprilTags...");
 
       if (!this.detector) {
         throw new Error(
@@ -198,7 +346,7 @@ export class AprilTagDetector {
       // Convert to grayscale
       const grayData = this.convertToGrayscale(imageData);
 
-      // set_img_buffer allocates the buffer for image and returns it; just returns the previously allocated buffer if size has not changed
+      // set_img_buffer allocates the buffer for image and returns it
       let imgBuffer = this.detector._atagjs_set_img_buffer(
         this.canvas.width,
         this.canvas.height,
@@ -206,28 +354,23 @@ export class AprilTagDetector {
       );
       if (this.canvas.width * this.canvas.height < grayData.length)
         throw new Error("Image data too large.");
-      this.detector.HEAPU8.set(grayData, imgBuffer); // copy grayscale image data
+      this.detector.HEAPU8.set(grayData, imgBuffer);
       let strJsonPtr = this.detector._atagjs_detect();
-      /* detect returns a pointer to a t_str_json c struct as follows
-          size_t len; // string length
-          char *str;
-          size_t alloc_size; // allocated size */
-      let strJsonLen = this.detector.getValue(strJsonPtr, "i32"); // get len from struct
+
+      let strJsonLen = this.detector.getValue(strJsonPtr, "i32");
       if (strJsonLen == 0) {
-        // returned empty string
         return;
       }
-      let strJsonStrPtr = this.detector.getValue(strJsonPtr + 4, "i32"); // get *str from struct
+      let strJsonStrPtr = this.detector.getValue(strJsonPtr + 4, "i32");
       const strJsonView = new Uint8Array(
         this.detector.HEAPU8.buffer,
         strJsonStrPtr,
         strJsonLen
       );
-      let detectionsJson = ""; // build this javascript string from returned characters
+      let detectionsJson = "";
       for (let i = 0; i < strJsonLen; i++) {
         detectionsJson += String.fromCharCode(strJsonView[i]);
       }
-      //console.log(detectionsJson);
       let detections = JSON.parse(detectionsJson);
 
       if (!(detections instanceof Array)) {
@@ -236,21 +379,21 @@ export class AprilTagDetector {
       }
 
       this.drawDetections(detections);
-      this.hideStatus();
+      this.hideStatusMessage();
     } catch (error) {
       console.error("Error processing image:", error);
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       if (errorMessage.includes("WASM module not ready")) {
-        this.showStatus(
+        this.setStatus(
           "AprilTag library is still loading. Please wait and try again."
         );
       } else if (errorMessage.includes("not ready")) {
-        this.showStatus(
+        this.setStatus(
           "Detector not ready. Please wait for initialization to complete."
         );
       } else {
-        this.showStatus("Failed to detect AprilTags. Please try again.");
+        this.setStatus("Failed to detect AprilTags. Please try again.");
       }
     }
   }
@@ -260,7 +403,6 @@ export class AprilTagDetector {
     const grayData = new Uint8Array(imageData.width * imageData.height);
 
     for (let i = 0; i < data.length; i += 4) {
-      // Convert RGB to grayscale using luminance formula (same as in the AprilTag documentation)
       const gray = Math.round((data[i] + data[i + 1] + data[i + 2]) / 3);
       grayData[i / 4] = gray;
     }
@@ -300,24 +442,16 @@ export class AprilTagDetector {
     });
   }
 
-  // Detection info display removed - only canvas visualization shown
-
   backToCamera(): void {
-    this.video.style.display = "block";
-    this.canvas.style.display = "none";
-    document.getElementById("backButton")?.classList.remove("visible");
+    this.showCanvas = false;
   }
 
-  showStatus(message: string): void {
-    const status = document.getElementById("status");
-    if (status) {
-      status.textContent = message;
-      status.classList.add("visible");
-    }
+  setStatus(message: string): void {
+    this.statusMessage = message;
+    this.showStatus = true;
   }
 
-  hideStatus(): void {
-    const status = document.getElementById("status");
-    status?.classList.remove("visible");
+  hideStatusMessage(): void {
+    this.showStatus = false;
   }
 }

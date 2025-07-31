@@ -24,5 +24,8 @@
     "webassembly",
     "mobile"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "lit": "^3.3.1"
+  }
 }
