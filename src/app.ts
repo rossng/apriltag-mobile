@@ -10,7 +10,8 @@ export class AprilTagApp extends LitElement {
   @property({ type: Object }) detector!: AprilTagDetector;
 
   @state() private statusMessage: string | null = null;
-  @state() private currentFamily = "tag36h11";
+  @state() private currentFamily =
+    localStorage.getItem("selectedFamily") || "tag36h11";
   @state() private showDetections = false;
   @state() private isProcessing = false;
   @state() private captureEnabled = false;
@@ -226,6 +227,7 @@ export class AprilTagApp extends LitElement {
 
   async init(): Promise<void> {
     this.detector.init();
+    this.detector.setFamily(this.currentFamily);
     await this.initializeCamera();
     this.setupGlobalListeners();
     this.captureEnabled = true;
@@ -276,6 +278,7 @@ export class AprilTagApp extends LitElement {
 
     if (success) {
       this.currentFamily = family;
+      localStorage.setItem("selectedFamily", family);
       this.setStatus(`Switched to ${family}`);
     } else {
       this.setStatus(`Failed to switch to ${family}`);
