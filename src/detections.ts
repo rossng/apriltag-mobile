@@ -72,16 +72,15 @@ export class Detections extends LitElement {
   private drawDetections() {
     if (!this.detections || this.detections.length === 0) return;
 
-    this.ctx.strokeStyle = "#00ff00";
-    this.ctx.fillStyle = "#ff0000";
-    this.ctx.lineWidth = 3;
-    this.ctx.font = "24px Arial";
+    this.ctx.font = "bold 28px Arial";
     this.ctx.textAlign = "center";
 
     this.detections.forEach((detection) => {
       const corners = detection.corners;
 
-      // Draw tag outline
+      // Draw tag outline (thinner green)
+      this.ctx.strokeStyle = "#00ff00";
+      this.ctx.lineWidth = 2;
       this.ctx.beginPath();
       this.ctx.moveTo(corners[0].x, corners[0].y);
       for (let i = 1; i < corners.length; i++) {
@@ -91,15 +90,28 @@ export class Detections extends LitElement {
       this.ctx.stroke();
 
       // Draw top-left corner as red circle
+      this.ctx.fillStyle = "#ff0000";
       this.ctx.beginPath();
       this.ctx.arc(corners[0].x, corners[0].y, 8, 0, 2 * Math.PI);
       this.ctx.fill();
 
-      // Draw tag ID
+      // Draw tag ID with outline for better visibility
       const center = detection.center;
+      const text = detection.id.toString();
+      
+      // Draw black outline (stroke)
+      this.ctx.strokeStyle = "#000000";
+      this.ctx.lineWidth = 4;
+      this.ctx.strokeText(text, center.x, center.y + 10);
+      
+      // Draw white outline (thinner)
+      this.ctx.strokeStyle = "#ffffff";
+      this.ctx.lineWidth = 2;
+      this.ctx.strokeText(text, center.x, center.y + 10);
+      
+      // Draw yellow fill
       this.ctx.fillStyle = "#ffff00";
-      this.ctx.fillText(detection.id.toString(), center.x, center.y + 8);
-      this.ctx.fillStyle = "#ff0000";
+      this.ctx.fillText(text, center.x, center.y + 10);
     });
   }
 
