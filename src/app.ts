@@ -12,15 +12,18 @@ export class AprilTagApp extends LitElement {
   @state() private statusMessage: { message: string; until?: number } | null = null;
   @state() private currentFamily =
     localStorage.getItem("selectedFamily") || "tag36h11";
-  @state() private showDetections = false;
+  @state() private isPaused = false;
   @state() private isProcessing = false;
   @state() private captureEnabled = false;
   @state() private detections: Detection[] = [];
-  @state() private fillMode: 'cover' | 'contain' = 'cover';
+  @state() private frozenFrame: ImageData | null = null;
 
   private video!: HTMLVideoElement;
   private detectionCanvas!: Detections;
   private stream: MediaStream | null = null;
+  private animationFrameId: number | null = null;
+  private hiddenCanvas!: HTMLCanvasElement;
+  private hiddenCtx!: CanvasRenderingContext2D;
 
   static styles = css`
     :host {
@@ -77,6 +80,12 @@ export class AprilTagApp extends LitElement {
       justify-content: center;
       background: #222;
     }
+    
+    .video-overlay {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
 
     video,
     canvas {
@@ -88,16 +97,15 @@ export class AprilTagApp extends LitElement {
       object-fit: cover;
     }
 
-    video.contain {
-      object-fit: contain;
-    }
 
     apriltag-detections {
-      display: none;
-    }
-
-    apriltag-detections.visible {
-      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      z-index: 2;
     }
 
     video.hidden {
@@ -167,25 +175,6 @@ export class AprilTagApp extends LitElement {
       display: block;
     }
 
-    .fill-toggle {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 8px;
-      width: 40px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      color: #fff;
-      font-size: 18px;
-      transition: all 0.2s;
-    }
-
-    .fill-toggle:hover {
-      background: rgba(255, 255, 255, 0.15);
-      border-color: rgba(255, 255, 255, 0.3);
-    }
   `;
 
   render() {
@@ -193,9 +182,6 @@ export class AprilTagApp extends LitElement {
       <div class="header">
         <h1>AprilTag Detector</h1>
         <div class="header-controls">
-          <button class="fill-toggle" @click=${this.toggleFillMode} title="Toggle fill mode">
-            ${this.fillMode === 'cover' ? '⊡' : '▣'}
-          </button>
           <family-selector
             .currentFamily=${this.currentFamily}
             @family-selected=${this.handleFamilySelected}
@@ -208,25 +194,27 @@ export class AprilTagApp extends LitElement {
       </div>
 
       <div class="camera-container">
-        <video
-          class="${this.showDetections ? "hidden" : ""} ${this.fillMode === 'contain' ? 'contain' : ''}"
-          autoplay
-          muted
-          playsinline
-        ></video>
-        <apriltag-detections
-          class="${this.showDetections ? "visible" : ""}"
-          .detections=${this.detections}
-          .fillMode=${this.fillMode}
-        ></apriltag-detections>
+        <div class="video-overlay">
+          <video
+            class="${this.isPaused ? 'hidden' : ''}"
+            autoplay
+            muted
+            playsinline
+          ></video>
+          <apriltag-detections
+            .detections=${this.detections}
+            .imageData=${this.frozenFrame}
+            .showImage=${this.isPaused}
+          ></apriltag-detections>
+        </div>
       </div>
 
       <div class="controls">
         <button
           class="capture-button ${this.captureEnabled ? "enabled" : ""}"
-          @click=${this.showDetections ? this.backToCamera : this.captureImage}
+          @click=${this.toggleDetection}
         >
-          ${this.showDetections
+          ${this.isPaused
             ? html`<svg viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z"/>
               </svg>`
@@ -245,6 +233,10 @@ export class AprilTagApp extends LitElement {
       "apriltag-detections"
     )! as Detections;
 
+    // Create hidden canvas for frame capture
+    this.hiddenCanvas = document.createElement('canvas');
+    this.hiddenCtx = this.hiddenCanvas.getContext('2d')!;
+
     await this.updateComplete;
     await this.init();
   }
@@ -255,6 +247,7 @@ export class AprilTagApp extends LitElement {
     await this.initializeCamera();
     this.setupGlobalListeners();
     this.captureEnabled = true;
+    this.startContinuousDetection();
   }
 
   async initializeCamera(): Promise<void> {
@@ -309,61 +302,101 @@ export class AprilTagApp extends LitElement {
     }
   }
 
-  async captureImage(): Promise<void> {
-    if (this.isProcessing) return;
+  startContinuousDetection(): void {
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+    }
+    
+    this.runDetectionLoop();
+  }
+
+  stopContinuousDetection(): void {
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+  }
+
+  private runDetectionLoop(): void {
+    if (this.isPaused) {
+      return;
+    }
+
+    this.animationFrameId = requestAnimationFrame(() => {
+      this.processCurrentFrame();
+      this.runDetectionLoop();
+    });
+  }
+
+  private async processCurrentFrame(): Promise<void> {
+    if (this.isProcessing || !this.detector?.isReady() || !this.video.videoWidth) {
+      return;
+    }
 
     try {
       this.isProcessing = true;
-      this.setStatus("Capturing image...");
 
-      this.detectionCanvas.captureFromVideo(this.video);
-      this.showDetections = true;
+      // Set overlay canvas dimensions to match video
+      this.detectionCanvas.setCanvasDimensions(this.video.videoWidth, this.video.videoHeight);
 
-      await this.processImage();
+      // Capture current frame to hidden canvas
+      this.hiddenCanvas.width = this.video.videoWidth;
+      this.hiddenCanvas.height = this.video.videoHeight;
+      this.hiddenCtx.drawImage(this.video, 0, 0);
+
+      const imageData = this.hiddenCtx.getImageData(
+        0,
+        0,
+        this.hiddenCanvas.width,
+        this.hiddenCanvas.height
+      );
+
+      // Run detection
+      this.detections = this.detector.detectFromImageData(imageData);
     } catch (error) {
-      console.error("Error capturing image:", error);
-      this.setStatus("Failed to capture image. Please try again.");
+      console.error("Error processing frame:", error);
     } finally {
       this.isProcessing = false;
     }
   }
 
-  async processImage(): Promise<void> {
-    try {
-      this.setStatus("Detecting AprilTags...");
-
-      if (!this.detector || !this.detector.isReady()) {
-        throw new Error(
-          "Detector not ready. Please wait for initialization to complete."
-        );
-      }
-
-      const imageData = this.detectionCanvas.imageData;
-      if (!imageData) {
-        throw new Error("No image data available");
-      }
-
-      this.detections = this.detector.detectFromImageData(imageData);
-
-      this.hideStatusMessage();
-    } catch (error) {
-      console.error("Error processing image:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("not initialized")) {
-        this.setStatus(
-          "Detector not ready. Please wait for initialization to complete."
-        );
-      } else {
-        this.setStatus("Failed to detect AprilTags. Please try again.");
-      }
+  toggleDetection(): void {
+    this.isPaused = !this.isPaused;
+    
+    if (this.isPaused) {
+      this.freezeCurrentFrame();
+    } else {
+      this.resumeLiveVideo();
     }
   }
 
-  backToCamera(): void {
-    this.showDetections = false;
-    this.detections = [];
-    this.detectionCanvas.clear();
+  private freezeCurrentFrame(): void {
+    if (!this.video.videoWidth) return;
+
+    // Capture current frame
+    this.hiddenCanvas.width = this.video.videoWidth;
+    this.hiddenCanvas.height = this.video.videoHeight;
+    this.hiddenCtx.drawImage(this.video, 0, 0);
+
+    this.frozenFrame = this.hiddenCtx.getImageData(
+      0,
+      0,
+      this.hiddenCanvas.width,
+      this.hiddenCanvas.height
+    );
+
+    // Run detection on frozen frame
+    if (this.detector?.isReady()) {
+      this.detections = this.detector.detectFromImageData(this.frozenFrame);
+    }
+
+    // Stop continuous detection
+    this.stopContinuousDetection();
+  }
+
+  private resumeLiveVideo(): void {
+    this.frozenFrame = null;
+    this.startContinuousDetection();
   }
 
   setStatus(message: string, fadeOutAfter?: number): void {
@@ -383,7 +416,9 @@ export class AprilTagApp extends LitElement {
     this.statusMessage = null;
   }
 
-  toggleFillMode(): void {
-    this.fillMode = this.fillMode === 'cover' ? 'contain' : 'cover';
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this.stopContinuousDetection();
   }
 }

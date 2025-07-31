@@ -6,7 +6,7 @@ import type { Detection } from "./detector";
 export class Detections extends LitElement {
   @property({ type: Array }) detections: Detection[] = [];
   @property({ type: Object }) imageData?: ImageData;
-  @property({ type: String }) fillMode: 'cover' | 'contain' = 'contain';
+  @property({ type: Boolean }) showImage: boolean = false;
 
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
@@ -16,21 +16,19 @@ export class Detections extends LitElement {
       display: block;
       width: 100%;
       height: 100%;
+      pointer-events: none;
     }
 
     canvas {
       width: 100%;
       height: 100%;
-      object-fit: contain;
-    }
-
-    canvas.cover {
       object-fit: cover;
+      background: transparent;
     }
   `;
 
   render() {
-    return html` <canvas class="${this.fillMode === 'cover' ? 'cover' : ''}"></canvas> `;
+    return html` <canvas></canvas> `;
   }
 
   firstUpdated() {
@@ -40,26 +38,35 @@ export class Detections extends LitElement {
 
   updated(changedProperties: Map<string, any>) {
     if (
-      changedProperties.has("imageData") ||
       changedProperties.has("detections") ||
-      changedProperties.has("fillMode")
+      changedProperties.has("imageData") ||
+      changedProperties.has("showImage")
     ) {
       this.drawCanvas();
     }
   }
 
   private drawCanvas() {
-    if (!this.imageData) return;
+    // Clear the canvas
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Set canvas size to match image
-    this.canvas.width = this.imageData.width;
-    this.canvas.height = this.imageData.height;
-
-    // Draw the image
-    this.ctx.putImageData(this.imageData, 0, 0);
+    // Draw frozen image if in paused mode
+    if (this.showImage && this.imageData) {
+      this.canvas.width = this.imageData.width;
+      this.canvas.height = this.imageData.height;
+      this.ctx.putImageData(this.imageData, 0, 0);
+    }
 
     // Draw detections
     this.drawDetections();
+  }
+
+  /**
+   * Set canvas dimensions to match video
+   */
+  setCanvasDimensions(width: number, height: number) {
+    this.canvas.width = width;
+    this.canvas.height = height;
   }
 
   private drawDetections() {
@@ -97,30 +104,9 @@ export class Detections extends LitElement {
   }
 
   /**
-   * Capture the current frame from a video element
-   */
-  captureFromVideo(video: HTMLVideoElement): ImageData {
-    this.canvas.width = video.videoWidth;
-    this.canvas.height = video.videoHeight;
-
-    this.ctx.drawImage(video, 0, 0, this.canvas.width, this.canvas.height);
-
-    const imageData = this.ctx.getImageData(
-      0,
-      0,
-      this.canvas.width,
-      this.canvas.height
-    );
-
-    this.imageData = imageData;
-    return imageData;
-  }
-
-  /**
    * Clear the canvas
    */
   clear() {
-    this.imageData = undefined;
     this.detections = [];
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
