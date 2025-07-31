@@ -9,7 +9,7 @@ import type { Detections } from "./detections";
 export class AprilTagApp extends LitElement {
   @property({ type: Object }) detector!: AprilTagDetector;
 
-  @state() private statusMessage: string | null = null;
+  @state() private statusMessage: { message: string; until?: number } | null = null;
   @state() private currentFamily =
     localStorage.getItem("selectedFamily") || "tag36h11";
   @state() private showDetections = false;
@@ -184,7 +184,7 @@ export class AprilTagApp extends LitElement {
       </div>
 
       <div class="status ${this.statusMessage ? "visible" : ""}">
-        ${this.statusMessage}
+        ${this.statusMessage?.message}
       </div>
 
       <div class="camera-container">
@@ -279,7 +279,7 @@ export class AprilTagApp extends LitElement {
     if (success) {
       this.currentFamily = family;
       localStorage.setItem("selectedFamily", family);
-      this.setStatus(`Switched to ${family}`);
+      this.setStatus(`Switched to ${family}`, 3000);
     } else {
       this.setStatus(`Failed to switch to ${family}`);
     }
@@ -342,8 +342,17 @@ export class AprilTagApp extends LitElement {
     this.detectionCanvas.clear();
   }
 
-  setStatus(message: string): void {
-    this.statusMessage = message;
+  setStatus(message: string, fadeOutAfter?: number): void {
+    const until = fadeOutAfter ? Date.now() + fadeOutAfter : undefined;
+    this.statusMessage = { message, until };
+    
+    if (until) {
+      setTimeout(() => {
+        if (this.statusMessage?.until === until) {
+          this.statusMessage = null;
+        }
+      }, fadeOutAfter);
+    }
   }
 
   hideStatusMessage(): void {
