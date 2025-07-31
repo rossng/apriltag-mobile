@@ -16,6 +16,7 @@ export class AprilTagApp extends LitElement {
   @state() private isProcessing = false;
   @state() private captureEnabled = false;
   @state() private detections: Detection[] = [];
+  @state() private fillMode: 'cover' | 'contain' = 'cover';
 
   private video!: HTMLVideoElement;
   private detectionCanvas!: Detections;
@@ -55,6 +56,12 @@ export class AprilTagApp extends LitElement {
       margin: 0;
     }
 
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
     family-selector {
       position: relative;
     }
@@ -79,6 +86,10 @@ export class AprilTagApp extends LitElement {
 
     video {
       object-fit: cover;
+    }
+
+    video.contain {
+      object-fit: contain;
     }
 
     apriltag-detections {
@@ -171,16 +182,41 @@ export class AprilTagApp extends LitElement {
     .status.visible {
       display: block;
     }
+
+    .fill-toggle {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #fff;
+      font-size: 18px;
+      transition: all 0.2s;
+    }
+
+    .fill-toggle:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
   `;
 
   render() {
     return html`
       <div class="header">
         <h1>AprilTag Detector</h1>
-        <family-selector
-          .currentFamily=${this.currentFamily}
-          @family-selected=${this.handleFamilySelected}
-        ></family-selector>
+        <div class="header-controls">
+          <button class="fill-toggle" @click=${this.toggleFillMode} title="Toggle fill mode">
+            ${this.fillMode === 'cover' ? '⊡' : '▣'}
+          </button>
+          <family-selector
+            .currentFamily=${this.currentFamily}
+            @family-selected=${this.handleFamilySelected}
+          ></family-selector>
+        </div>
       </div>
 
       <div class="status ${this.statusMessage ? "visible" : ""}">
@@ -189,7 +225,7 @@ export class AprilTagApp extends LitElement {
 
       <div class="camera-container">
         <video
-          class="${this.showDetections ? "hidden" : ""}"
+          class="${this.showDetections ? "hidden" : ""} ${this.fillMode === 'contain' ? 'contain' : ''}"
           autoplay
           muted
           playsinline
@@ -197,6 +233,7 @@ export class AprilTagApp extends LitElement {
         <apriltag-detections
           class="${this.showDetections ? "visible" : ""}"
           .detections=${this.detections}
+          .fillMode=${this.fillMode}
         ></apriltag-detections>
       </div>
 
@@ -357,5 +394,9 @@ export class AprilTagApp extends LitElement {
 
   hideStatusMessage(): void {
     this.statusMessage = null;
+  }
+
+  toggleFillMode(): void {
+    this.fillMode = this.fillMode === 'cover' ? 'contain' : 'cover';
   }
 }
