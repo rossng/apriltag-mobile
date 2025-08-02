@@ -23,6 +23,8 @@ export class AprilTagApp extends LitElement {
   @state() private isRecording = false;
   @state() private recordedTagIds: number[] = [];
   @state() private showRecordedTags = false;
+  @state() private selectedImage: ImageData | null = null;
+  @state() private isImageMode = false;
 
   private recordedTagIdsSet = new Set<number>();
 
@@ -197,6 +199,7 @@ export class AprilTagApp extends LitElement {
           <overflow-menu
             .recordMode=${this.recordMode}
             @record-mode-changed=${this.handleRecordModeChanged}
+            @image-selected=${this.handleImageSelected}
           ></overflow-menu>
         </div>
       </div>
@@ -208,15 +211,15 @@ export class AprilTagApp extends LitElement {
       <div class="camera-container">
         <div class="video-overlay">
           <video
-            class="${this.isPaused || this.showRecordedTags ? 'hidden' : ''}"
+            class="${this.isPaused || this.showRecordedTags || this.isImageMode ? 'hidden' : ''}"
             autoplay
             muted
             playsinline
           ></video>
           <apriltag-detections
             .detections=${this.detections}
-            .imageData=${this.frozenFrame}
-            .showImage=${this.isPaused}
+            .imageData=${this.isImageMode ? this.selectedImage : this.frozenFrame}
+            .showImage=${this.isPaused || this.isImageMode}
             style="display: ${this.showRecordedTags ? 'none' : 'block'}"
           ></apriltag-detections>
           ${this.showRecordedTags ? html`
@@ -311,6 +314,11 @@ export class AprilTagApp extends LitElement {
     }
   }
 
+  handleImageSelected(e: CustomEvent): void {
+    const { file } = e.detail;
+    this.loadImageFile(file);
+  }
+
   switchFamily(family: string): void {
     const success = this.detector.setFamily(family);
 
@@ -339,7 +347,7 @@ export class AprilTagApp extends LitElement {
   }
 
   private runDetectionLoop(): void {
-    if (this.isPaused) {
+    if (this.isPaused || this.isImageMode) {
       return;
     }
 
@@ -390,7 +398,9 @@ export class AprilTagApp extends LitElement {
   }
 
   toggleDetection(): void {
-    if (this.recordMode) {
+    if (this.isImageMode) {
+      this.exitImageMode();
+    } else if (this.recordMode) {
       if (this.isRecording) {
         this.stopRecording();
       } else {
@@ -450,13 +460,69 @@ export class AprilTagApp extends LitElement {
   private hideRecordedTags(): void {
     this.showRecordedTags = false;
     // Resume live video when closing recorded tags view
-    if (!this.isPaused) {
+    if (!this.isPaused && !this.isImageMode) {
       this.startContinuousDetection();
     }
   }
 
+  private async loadImageFile(file: File): Promise<void> {
+    try {
+      this.setStatus("Loading image...");
+      
+      const img = new Image();
+      img.onload = () => {
+        // Create canvas to get ImageData
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d')!;
+        
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        
+        this.selectedImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        
+        // Run detection on the image
+        if (this.detector?.isReady()) {
+          this.detections = this.detector.detectFromImageData(this.selectedImage);
+        }
+        
+        // Stop continuous detection and enter image mode
+        this.stopContinuousDetection();
+        this.isImageMode = true;
+        this.isPaused = false;
+        this.showRecordedTags = false;
+        
+        this.hideStatusMessage();
+        
+        // Clean up
+        URL.revokeObjectURL(img.src);
+      };
+      
+      img.onerror = () => {
+        this.setStatus("Failed to load image");
+        URL.revokeObjectURL(img.src);
+      };
+      
+      img.src = URL.createObjectURL(file);
+    } catch (error) {
+      console.error("Error loading image:", error);
+      this.setStatus("Failed to load image");
+    }
+  }
+
+  private exitImageMode(): void {
+    this.isImageMode = false;
+    this.selectedImage = null;
+    this.detections = [];
+    this.startContinuousDetection();
+  }
+
   private getButtonIcon() {
-    if (this.recordMode) {
+    if (this.isImageMode) {
+      return html`<svg viewBox="0 0 24 24">
+        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>`;
+    } else if (this.recordMode) {
       if (this.isRecording) {
         return html`<svg viewBox="0 0 24 24">
           <rect x="6" y="6" width="12" height="12" rx="2"/>
