@@ -14,29 +14,19 @@ export class Detections extends LitElement {
 
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
-  private scale = 1;
-  private translateX = 0;
-  private translateY = 0;
-  private lastTouchDistance = 0;
-  private lastTouchCenterX = 0;
-  private lastTouchCenterY = 0;
 
   static styles = css`
     :host {
       display: block;
       width: 100%;
       height: 100%;
-      pointer-events: auto;
-      overflow: hidden;
+      pointer-events: none;
     }
 
     canvas {
       width: 100%;
       height: 100%;
       background: transparent;
-      touch-action: none;
-      transform-origin: 0 0;
-      transition: transform 0.1s ease-out;
     }
 
     canvas.cover-mode {
@@ -57,7 +47,6 @@ export class Detections extends LitElement {
   firstUpdated() {
     this.canvas = this.shadowRoot!.querySelector('canvas')!;
     this.ctx = this.canvas.getContext('2d')!;
-    this.setupTouchEvents();
   }
 
   updated(changedProperties: Map<string, any>) {
@@ -67,10 +56,6 @@ export class Detections extends LitElement {
       changedProperties.has('showImage') ||
       changedProperties.has('videoDimensions')
     ) {
-      // Reset zoom when switching between modes or loading new images
-      if (changedProperties.has('showImage') || changedProperties.has('imageData')) {
-        this.resetZoom();
-      }
       this.drawCanvas();
     }
   }
@@ -200,138 +185,5 @@ export class Detections extends LitElement {
   clear() {
     this.detections = [];
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-  }
-
-  private setupTouchEvents() {
-    this.canvas.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
-    this.canvas.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
-    this.canvas.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: false });
-    this.canvas.addEventListener('wheel', this.handleWheel.bind(this), { passive: false });
-  }
-
-  private handleTouchStart(e: TouchEvent) {
-    e.preventDefault();
-    
-    if (!this.showImage) return;
-    
-    if (e.touches.length === 2) {
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      
-      this.lastTouchDistance = this.getDistance(touch1, touch2);
-      const center = this.getTouchCenter(touch1, touch2);
-      this.lastTouchCenterX = center.x;
-      this.lastTouchCenterY = center.y;
-    }
-  }
-
-  private handleTouchMove(e: TouchEvent) {
-    e.preventDefault();
-    
-    if (!this.showImage) return;
-    
-    if (e.touches.length === 2) {
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      
-      const currentDistance = this.getDistance(touch1, touch2);
-      const center = this.getTouchCenter(touch1, touch2);
-      
-      if (this.lastTouchDistance > 0) {
-        const scaleChange = currentDistance / this.lastTouchDistance;
-        const newScale = Math.max(0.5, Math.min(5, this.scale * scaleChange));
-        
-        // Calculate zoom point relative to canvas
-        const rect = this.canvas.getBoundingClientRect();
-        const zoomPointX = center.x - rect.left;
-        const zoomPointY = center.y - rect.top;
-        
-        // Adjust translation to zoom around the touch center
-        const scaleDiff = newScale - this.scale;
-        this.translateX -= (zoomPointX / rect.width) * rect.width * scaleDiff;
-        this.translateY -= (zoomPointY / rect.height) * rect.height * scaleDiff;
-        
-        this.scale = newScale;
-        this.updateCanvasTransform();
-      }
-      
-      this.lastTouchDistance = currentDistance;
-      this.lastTouchCenterX = center.x;
-      this.lastTouchCenterY = center.y;
-    } else if (e.touches.length === 1 && this.scale > 1) {
-      // Pan when zoomed in
-      const touch = e.touches[0];
-      if (this.lastTouchCenterX !== 0 && this.lastTouchCenterY !== 0) {
-        const deltaX = touch.clientX - this.lastTouchCenterX;
-        const deltaY = touch.clientY - this.lastTouchCenterY;
-        
-        this.translateX += deltaX;
-        this.translateY += deltaY;
-        this.updateCanvasTransform();
-      }
-      
-      this.lastTouchCenterX = touch.clientX;
-      this.lastTouchCenterY = touch.clientY;
-    }
-  }
-
-  private handleTouchEnd(e: TouchEvent) {
-    e.preventDefault();
-    
-    if (e.touches.length === 0) {
-      this.lastTouchDistance = 0;
-      this.lastTouchCenterX = 0;
-      this.lastTouchCenterY = 0;
-    } else if (e.touches.length === 1) {
-      const touch = e.touches[0];
-      this.lastTouchCenterX = touch.clientX;
-      this.lastTouchCenterY = touch.clientY;
-    }
-  }
-
-  private handleWheel(e: WheelEvent) {
-    e.preventDefault();
-    
-    if (!this.showImage) return;
-    
-    const scaleChange = e.deltaY > 0 ? 0.9 : 1.1;
-    const newScale = Math.max(0.5, Math.min(5, this.scale * scaleChange));
-    
-    // Calculate zoom point relative to canvas
-    const rect = this.canvas.getBoundingClientRect();
-    const zoomPointX = e.clientX - rect.left;
-    const zoomPointY = e.clientY - rect.top;
-    
-    // Adjust translation to zoom around the mouse cursor
-    const scaleDiff = newScale - this.scale;
-    this.translateX -= (zoomPointX / rect.width) * rect.width * scaleDiff;
-    this.translateY -= (zoomPointY / rect.height) * rect.height * scaleDiff;
-    
-    this.scale = newScale;
-    this.updateCanvasTransform();
-  }
-
-  private getDistance(touch1: Touch, touch2: Touch): number {
-    const dx = touch1.clientX - touch2.clientX;
-    const dy = touch1.clientY - touch2.clientY;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
-
-  private getTouchCenter(touch1: Touch, touch2: Touch): { x: number; y: number } {
-    return {
-      x: (touch1.clientX + touch2.clientX) / 2,
-      y: (touch1.clientY + touch2.clientY) / 2,
-    };
-  }
-
-  private updateCanvasTransform() {
-    this.canvas.style.transform = `scale(${this.scale}) translate(${this.translateX / this.scale}px, ${this.translateY / this.scale}px)`;
-  }
-
-  private resetZoom() {
-    this.scale = 1;
-    this.translateX = 0;
-    this.translateY = 0;
-    this.updateCanvasTransform();
   }
 }
