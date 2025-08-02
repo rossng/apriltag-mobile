@@ -98,7 +98,7 @@ export class RecordedTags extends LitElement {
       
       <div class="header">
         <h2>Recorded Tags</h2>
-        ${this.tagIds.length > 0 ? html`<div class="count">${this.tagIds.length} unique tags detected</div>` : ''}
+        ${this.tagIds.length > 0 ? html`<div class="count">${this.tagIds.length} unique tag${this.tagIds.length === 1 ? '' : 's'} detected</div>` : ''}
       </div>
 
       ${this.tagIds.length === 0 
