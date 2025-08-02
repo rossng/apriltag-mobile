@@ -92,15 +92,17 @@ export class Detections extends LitElement {
 
     // Calculate scaled dimensions for consistent appearance
     const outlineWidth = Math.max(1, Math.round(baseFontSize * 0.07)); // ~7% of font size
-    const circleRadius = Math.max(3, Math.round(baseFontSize * 0.3)); // ~30% of font size
+    const circleRadius = Math.max(1.5, Math.round(baseFontSize * 0.15)); // ~15% of font size (half of original)
     const textOutlineWidth = Math.max(1, Math.round(baseFontSize * 0.14)); // ~14% of font size
     const textInnerOutlineWidth = Math.max(1, Math.round(baseFontSize * 0.07)); // ~7% of font size
 
     this.detections.forEach((detection) => {
       const corners = detection.corners;
 
-      // Draw tag outline (thinner green)
-      this.ctx.strokeStyle = "#00ff00";
+      // Draw tag outline with neon cyan glow
+      this.ctx.shadowColor = "#00ffff";
+      this.ctx.shadowBlur = 10;
+      this.ctx.strokeStyle = "#00ffff";
       this.ctx.lineWidth = outlineWidth;
       this.ctx.beginPath();
       this.ctx.moveTo(corners[0].x, corners[0].y);
@@ -110,29 +112,38 @@ export class Detections extends LitElement {
       this.ctx.closePath();
       this.ctx.stroke();
 
-      // Draw top-left corner as red circle
-      this.ctx.fillStyle = "#ff0000";
+      // Draw top-left corner as neon magenta circle
+      this.ctx.shadowBlur = 0;
+      this.ctx.fillStyle = "#ff00ff";
       this.ctx.beginPath();
       this.ctx.arc(corners[0].x, corners[0].y, circleRadius, 0, 2 * Math.PI);
       this.ctx.fill();
 
-      // Draw tag ID with outline for better visibility
+      // Draw tag ID with neon styling and glow
       const center = detection.center;
       const text = detection.id.toString();
       
-      // Draw black outline (stroke)
+      // Reset shadow for text outline
+      this.ctx.shadowBlur = 0;
+      
+      // Draw dark outline (stroke)
       this.ctx.strokeStyle = "#000000";
       this.ctx.lineWidth = textOutlineWidth;
       this.ctx.strokeText(text, center.x, center.y + 10);
       
-      // Draw white outline (thinner)
-      this.ctx.strokeStyle = "#ffffff";
+      // Draw cyan outline (thinner)
+      this.ctx.strokeStyle = "#00ffff";
       this.ctx.lineWidth = textInnerOutlineWidth;
       this.ctx.strokeText(text, center.x, center.y + 10);
       
-      // Draw yellow fill
-      this.ctx.fillStyle = "#ffff00";
+      // Draw neon green fill with glow
+      this.ctx.shadowColor = "#00ff80";
+      this.ctx.shadowBlur = 5;
+      this.ctx.fillStyle = "#00ff80";
       this.ctx.fillText(text, center.x, center.y + 10);
+      
+      // Reset shadow for next detection
+      this.ctx.shadowBlur = 0;
     });
   }
 

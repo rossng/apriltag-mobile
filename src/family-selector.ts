@@ -18,28 +18,34 @@ export class FamilySelector extends LitElement {
     }
 
     .dropdown {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: var(--card-bg);
+      border: 1px solid var(--neon-purple);
       border-radius: 8px;
-      color: #fff;
+      color: var(--text-primary);
       font-size: 14px;
+      font-family: 'Courier New', monospace;
       padding: 8px 16px;
       cursor: pointer;
       min-width: 220px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      transition: all 0.2s;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 15px rgba(128, 0, 255, 0.3);
     }
 
     .dropdown:hover {
-      background: rgba(255, 255, 255, 0.15);
-      border-color: rgba(255, 255, 255, 0.3);
+      background: var(--card-bg);
+      border-color: var(--neon-purple);
+      box-shadow: 0 0 25px rgba(128, 0, 255, 0.5);
+      text-shadow: 0 0 10px var(--neon-purple);
     }
 
     .dropdown.active {
-      background: rgba(255, 255, 255, 0.2);
-      border-color: rgba(255, 255, 255, 0.4);
+      background: var(--card-bg);
+      border-color: var(--neon-purple);
+      box-shadow: 0 0 30px rgba(128, 0, 255, 0.6);
+      text-shadow: 0 0 15px var(--neon-purple);
     }
 
     .dropdown-label {
@@ -62,14 +68,16 @@ export class FamilySelector extends LitElement {
       top: calc(100% + 4px);
       left: 0;
       right: 0;
-      background: rgba(40, 40, 40, 0.95);
+      background: var(--card-bg);
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 1px solid var(--neon-purple);
       border-radius: 8px;
       padding: 4px;
       z-index: 1001;
       display: none;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      box-shadow: 
+        0 4px 20px rgba(128, 0, 255, 0.4),
+        inset 0 0 20px rgba(128, 0, 255, 0.1);
     }
 
     .dropdown-menu.active {
@@ -79,18 +87,26 @@ export class FamilySelector extends LitElement {
     .menu-item {
       padding: 10px 16px;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: all 0.3s ease;
       border-radius: 4px;
       font-size: 14px;
+      font-family: 'Courier New', monospace;
+      color: var(--text-secondary);
     }
 
     .menu-item:hover {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(128, 0, 255, 0.2);
+      color: var(--text-primary);
+      text-shadow: 0 0 10px var(--neon-purple);
+      box-shadow: inset 0 0 10px rgba(128, 0, 255, 0.3);
     }
 
     .menu-item.selected {
-      background: rgba(0, 122, 255, 0.3);
+      background: rgba(128, 0, 255, 0.3);
+      color: var(--text-primary);
       font-weight: 500;
+      text-shadow: 0 0 5px var(--neon-purple);
+      box-shadow: inset 0 0 15px rgba(128, 0, 255, 0.4);
     }
   `;
 
