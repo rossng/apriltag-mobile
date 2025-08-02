@@ -2,7 +2,12 @@ import { LitElement, html, css } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { AprilTagDetector } from "./detector";
 import { AppMode, isValidModeTransition } from "./app-state";
-import { CameraController, DetectionController, RecordingController, StatusController } from "./controllers";
+import {
+  CameraController,
+  DetectionController,
+  RecordingController,
+  StatusController,
+} from "./controllers";
 import "./family-selector";
 import "./detections";
 import "./overflow-menu";
@@ -13,12 +18,13 @@ export class AprilTagApp extends LitElement {
   @property({ type: Object }) detector!: AprilTagDetector;
 
   @state() private appMode: AppMode = AppMode.LIVE;
-  @state() private currentFamily = localStorage.getItem("selectedFamily") || "tag36h11";
+  @state() private currentFamily =
+    localStorage.getItem("selectedFamily") || "tag36h11";
   @state() private recordMode = false;
   @state() private captureEnabled = false;
 
   private video!: HTMLVideoElement;
-  
+
   // Controllers
   private cameraController!: CameraController;
   private detectionController!: DetectionController;
@@ -33,7 +39,7 @@ export class AprilTagApp extends LitElement {
       left: 0;
       right: 0;
       bottom: 0;
-      font-family: 'Courier New', monospace;
+      font-family: "Courier New", monospace;
       background: var(--dark-bg);
       color: var(--text-primary);
     }
@@ -86,11 +92,10 @@ export class AprilTagApp extends LitElement {
       border: 1px solid rgba(0, 255, 255, 0.3);
       border-radius: 8px;
       margin: 8px;
-      box-shadow: 
-        inset 0 0 20px rgba(0, 255, 255, 0.1),
+      box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.1),
         0 0 30px rgba(0, 255, 255, 0.2);
     }
-    
+
     .video-overlay {
       position: relative;
       width: 100%;
@@ -106,7 +111,6 @@ export class AprilTagApp extends LitElement {
     video {
       object-fit: cover;
     }
-
 
     apriltag-detections {
       position: absolute;
@@ -151,23 +155,20 @@ export class AprilTagApp extends LitElement {
       opacity: 0.5;
       pointer-events: none;
       position: relative;
-      box-shadow: 
-        0 0 20px rgba(255, 0, 128, 0.4),
+      box-shadow: 0 0 20px rgba(255, 0, 128, 0.4),
         inset 0 0 20px rgba(255, 0, 128, 0.1);
     }
 
     .capture-button.enabled {
       opacity: 1;
       pointer-events: auto;
-      box-shadow: 
-        0 0 30px rgba(255, 0, 128, 0.6),
+      box-shadow: 0 0 30px rgba(255, 0, 128, 0.6),
         inset 0 0 20px rgba(255, 0, 128, 0.2);
     }
 
     .capture-button:active {
       transform: scale(0.95);
-      box-shadow: 
-        0 0 40px rgba(255, 0, 128, 0.8),
+      box-shadow: 0 0 40px rgba(255, 0, 128, 0.8),
         inset 0 0 30px rgba(255, 0, 128, 0.3);
     }
 
@@ -194,7 +195,6 @@ export class AprilTagApp extends LitElement {
       stroke: none;
     }
 
-
     .status {
       position: fixed;
       top: 80px;
@@ -208,8 +208,7 @@ export class AprilTagApp extends LitElement {
       text-align: center;
       display: none;
       z-index: 999;
-      box-shadow: 
-        0 0 20px rgba(0, 255, 128, 0.4),
+      box-shadow: 0 0 20px rgba(0, 255, 128, 0.4),
         inset 0 0 10px rgba(0, 255, 128, 0.1);
       text-shadow: 0 0 10px var(--neon-green);
     }
@@ -220,18 +219,50 @@ export class AprilTagApp extends LitElement {
     }
 
     @keyframes neonPulse {
-      0%, 100% { 
-        box-shadow: 
-          0 0 20px rgba(0, 255, 128, 0.4),
+      0%,
+      100% {
+        box-shadow: 0 0 20px rgba(0, 255, 128, 0.4),
           inset 0 0 10px rgba(0, 255, 128, 0.1);
       }
-      50% { 
-        box-shadow: 
-          0 0 30px rgba(0, 255, 128, 0.6),
+      50% {
+        box-shadow: 0 0 30px rgba(0, 255, 128, 0.6),
           inset 0 0 15px rgba(0, 255, 128, 0.2);
       }
     }
 
+    .about-button {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--card-bg);
+      border: 1px solid var(--neon-cyan);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1001;
+      opacity: 0.6;
+      box-shadow: 0 0 10px rgba(6, 9, 9, 0.3),
+        inset 0 0 10px rgba(0, 255, 255, 0.1);
+    }
+
+    .about-button:hover {
+      opacity: 1;
+      transform: scale(1.05);
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.5),
+        inset 0 0 15px rgba(0, 255, 255, 0.2);
+    }
+
+    .about-button svg {
+      width: 20px;
+      height: 20px;
+      fill: var(--neon-cyan);
+      filter: drop-shadow(0 0 5px var(--neon-cyan));
+    }
   `;
 
   render() {
@@ -259,35 +290,56 @@ export class AprilTagApp extends LitElement {
       <div class="camera-container">
         <div class="video-overlay">
           <video
-            class="${this.appMode !== AppMode.LIVE && this.appMode !== AppMode.RECORDING ? 'hidden' : ''}"
+            class="${this.appMode !== AppMode.LIVE &&
+            this.appMode !== AppMode.RECORDING
+              ? "hidden"
+              : ""}"
             autoplay
             muted
             playsinline
           ></video>
           <apriltag-detections
             .detections=${this.detectionController?.detections || []}
-            .imageData=${this.appMode === AppMode.IMAGE_MODE ? this.detectionController?.selectedImage : this.detectionController?.frozenFrame}
-            .showImage=${this.appMode === AppMode.PAUSED || this.appMode === AppMode.IMAGE_MODE}
+            .imageData=${this.appMode === AppMode.IMAGE_MODE
+              ? this.detectionController?.selectedImage
+              : this.detectionController?.frozenFrame}
+            .showImage=${this.appMode === AppMode.PAUSED ||
+            this.appMode === AppMode.IMAGE_MODE}
             .videoDimensions=${this.cameraController?.dimensions}
-            style="display: ${this.appMode === AppMode.VIEWING_RECORDED ? 'none' : 'block'}"
+            style="display: ${this.appMode === AppMode.VIEWING_RECORDED
+              ? "none"
+              : "block"}"
           ></apriltag-detections>
-          ${this.appMode === AppMode.VIEWING_RECORDED ? html`
-            <recorded-tags
-              .tagIds=${this.recordingController?.tagIds || []}
-              @close=${this.handleHideRecorded}
-            ></recorded-tags>
-          ` : ''}
+          ${this.appMode === AppMode.VIEWING_RECORDED
+            ? html`
+                <recorded-tags
+                  .tagIds=${this.recordingController?.tagIds || []}
+                  @close=${this.handleHideRecorded}
+                ></recorded-tags>
+              `
+            : ""}
         </div>
       </div>
 
       <div class="controls">
         <button
-          class="capture-button ${this.captureEnabled && this.appMode !== AppMode.VIEWING_RECORDED ? "enabled" : ""}"
+          class="capture-button ${this.captureEnabled &&
+          this.appMode !== AppMode.VIEWING_RECORDED
+            ? "enabled"
+            : ""}"
           @click=${this.handleToggleDetection}
         >
           ${this.getButtonIcon()}
         </button>
       </div>
+
+      <button class="about-button" @click=${this.handleAboutClick}>
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"
+          />
+        </svg>
+      </button>
     `;
   }
 
@@ -301,24 +353,24 @@ export class AprilTagApp extends LitElement {
   async init(): Promise<void> {
     this.detector.init();
     this.detector.setFamily(this.currentFamily);
-    
+
     // Create all controllers after element is connected
     this.cameraController = new CameraController(this);
     this.detectionController = new DetectionController(this, this.detector);
     this.recordingController = new RecordingController(this);
     this.statusController = new StatusController(this);
-    
+
     this.detectionController.setVideo(this.video);
-    
+
     // Set up listeners BEFORE initializing camera
     this.setupControllerListeners();
     this.setupGlobalListeners();
-    
+
     // Now initialize camera - this will dispatch events
     await this.cameraController.initialize();
-    
+
     this.captureEnabled = true;
-    
+
     // Start detection since we're already in LIVE mode
     this.detectionController.setMode(AppMode.LIVE);
     this.detectionController.startContinuousDetection();
@@ -326,41 +378,48 @@ export class AprilTagApp extends LitElement {
 
   setupControllerListeners(): void {
     // Camera controller events
-    this.addEventListener('camera-ready', (e: any) => {
-      console.log('Camera ready event received:', e.detail);
+    this.addEventListener("camera-ready", (e: any) => {
+      console.log("Camera ready event received:", e.detail);
       this.video.srcObject = e.detail.stream;
       this.video.addEventListener("loadedmetadata", () => {
-        console.log('Video metadata loaded:', this.video.videoWidth, this.video.videoHeight);
+        console.log(
+          "Video metadata loaded:",
+          this.video.videoWidth,
+          this.video.videoHeight
+        );
         this.statusController?.clearMessage();
-        this.cameraController?.updateDimensions(this.video.videoWidth, this.video.videoHeight);
+        this.cameraController?.updateDimensions(
+          this.video.videoWidth,
+          this.video.videoHeight
+        );
       });
     });
-    
-    this.addEventListener('camera-error', (e: any) => {
+
+    this.addEventListener("camera-error", (e: any) => {
       this.statusController?.setPersistentMessage(e.detail.message);
     });
-    
-    this.addEventListener('status-update', (e: any) => {
+
+    this.addEventListener("status-update", (e: any) => {
       this.statusController?.setMessage(e.detail.message);
     });
-    
-    this.addEventListener('status-clear', () => {
+
+    this.addEventListener("status-clear", () => {
       this.statusController?.clearMessage();
     });
-    
+
     // Detection controller events
-    this.addEventListener('detections-updated', (e: any) => {
+    this.addEventListener("detections-updated", (e: any) => {
       if (this.recordingController?.isActive) {
         this.recordingController?.recordDetections(e.detail.detections);
       }
     });
-    
+
     // Recording controller events
-    this.addEventListener('recording-stopped', () => {
+    this.addEventListener("recording-stopped", () => {
       this.setAppMode(AppMode.VIEWING_RECORDED);
     });
-    
-    this.addEventListener('recording-hidden', () => {
+
+    this.addEventListener("recording-hidden", () => {
       this.setAppMode(AppMode.LIVE);
     });
   }
@@ -368,7 +427,10 @@ export class AprilTagApp extends LitElement {
   setupGlobalListeners(): void {
     // Prevent video from pausing on page visibility change
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible" && this.cameraController.stream) {
+      if (
+        document.visibilityState === "visible" &&
+        this.cameraController.stream
+      ) {
         this.video.srcObject = this.cameraController.stream;
       }
     });
@@ -382,7 +444,7 @@ export class AprilTagApp extends LitElement {
   handleRecordModeChanged(e: CustomEvent): void {
     const { recordMode } = e.detail;
     this.recordMode = recordMode;
-    
+
     if (!recordMode && this.recordingController?.isActive) {
       this.recordingController.stopRecording();
     }
@@ -393,11 +455,15 @@ export class AprilTagApp extends LitElement {
     this.detectionController?.loadImageFile(file);
     this.setAppMode(AppMode.IMAGE_MODE);
   }
-  
+
   handleHideRecorded(): void {
     this.recordingController?.hideRecorded();
   }
-  
+
+  handleAboutClick(): void {
+    window.open("https://github.com/rossng/apriltag-mobile", "_blank");
+  }
+
   handleToggleDetection(): void {
     if (this.appMode === AppMode.IMAGE_MODE) {
       this.setAppMode(AppMode.LIVE);
@@ -428,32 +494,37 @@ export class AprilTagApp extends LitElement {
       this.statusController?.setMessage(`Failed to switch to ${family}`);
     }
   }
-  
+
   setAppMode(newMode: AppMode): void {
     // Skip if already in the same mode
     if (this.appMode === newMode) {
       return;
     }
-    
+
     if (!isValidModeTransition(this.appMode, newMode)) {
-      console.warn(`Invalid mode transition from ${this.appMode} to ${newMode}`);
+      console.warn(
+        `Invalid mode transition from ${this.appMode} to ${newMode}`
+      );
       return;
     }
-    
+
     // Turn off record mode when entering paused or image modes to prevent bugs
-    if ((newMode === AppMode.PAUSED || newMode === AppMode.IMAGE_MODE) && this.recordMode) {
+    if (
+      (newMode === AppMode.PAUSED || newMode === AppMode.IMAGE_MODE) &&
+      this.recordMode
+    ) {
       this.recordMode = false;
       if (this.recordingController?.isActive) {
         this.recordingController.stopRecording();
       }
     }
-    
+
     this.appMode = newMode;
-    
+
     // Only update detection controller if it's initialized
     if (this.detectionController) {
       this.detectionController.setMode(newMode);
-      
+
       // Handle mode-specific logic
       switch (newMode) {
         case AppMode.LIVE:
@@ -475,35 +546,37 @@ export class AprilTagApp extends LitElement {
     }
   }
 
-
   private getButtonIcon() {
     if (this.appMode === AppMode.IMAGE_MODE) {
       return html`<svg viewBox="0 0 24 24">
-        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path
+          d="M18 6L6 18M6 6l12 12"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        />
       </svg>`;
     } else if (this.recordMode) {
       if (this.recordingController?.isActive) {
         return html`<svg viewBox="0 0 24 24">
-          <rect x="6" y="6" width="12" height="12" rx="2"/>
+          <rect x="6" y="6" width="12" height="12" rx="2" />
         </svg>`;
       } else {
         return html`<svg viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="8" fill="red"/>
+          <circle cx="12" cy="12" r="8" fill="red" />
         </svg>`;
       }
     } else {
       return this.appMode === AppMode.PAUSED
         ? html`<svg viewBox="0 0 24 24">
-            <path d="M8 5v14l11-7z"/>
+            <path d="M8 5v14l11-7z" />
           </svg>`
         : html`<svg viewBox="0 0 24 24">
-            <rect x="6" y="4" width="4" height="16"/>
-            <rect x="14" y="4" width="4" height="16"/>
+            <rect x="6" y="4" width="4" height="16" />
+            <rect x="14" y="4" width="4" height="16" />
           </svg>`;
     }
   }
-
-
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
