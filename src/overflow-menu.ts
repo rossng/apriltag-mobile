@@ -1,9 +1,11 @@
 import { LitElement, html, css } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { AppMode } from "./app-state";
 
 @customElement("overflow-menu")
 export class OverflowMenu extends LitElement {
   @property({ type: Boolean }) recordMode = false;
+  @property({ type: String }) appMode: AppMode = AppMode.LIVE;
   @state() private showMenu = false;
 
   static styles = css`
@@ -123,9 +125,29 @@ export class OverflowMenu extends LitElement {
       background: var(--neon-magenta);
       box-shadow: 0 0 15px var(--neon-magenta);
     }
+
+    .menu-item.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .menu-item.disabled:hover {
+      background: transparent;
+      color: var(--text-primary);
+      text-shadow: none;
+      box-shadow: none;
+    }
+
+    .toggle-switch.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
   `;
 
   render() {
+    const isRecordModeDisabled = this.isRecordModeDisabled();
+    
     return html`
       <button
         class="menu-button ${this.showMenu ? "active" : ""}"
@@ -138,11 +160,12 @@ export class OverflowMenu extends LitElement {
         </svg>
       </button>
       <div class="dropdown-menu ${this.showMenu ? "active" : ""}">
-        <div class="menu-item" @click=${this.handleMenuItemClick}>
+        <div class="menu-item ${isRecordModeDisabled ? "disabled" : ""}" @click=${this.handleMenuItemClick}>
           <span>Record Mode</span>
           <div
-            class="toggle-switch ${this.recordMode ? "active" : ""}"
+            class="toggle-switch ${this.recordMode ? "active" : ""} ${isRecordModeDisabled ? "disabled" : ""}"
             @click=${this.handleToggleClick}
+            title="${isRecordModeDisabled ? "Record mode is disabled while viewing frozen video or images" : ""}"
           ></div>
         </div>
         <div class="menu-item" @click=${this.handleSelectImage}>
@@ -178,8 +201,17 @@ export class OverflowMenu extends LitElement {
     e.stopPropagation();
   }
 
+  private isRecordModeDisabled(): boolean {
+    return this.appMode === AppMode.PAUSED || this.appMode === AppMode.IMAGE_MODE;
+  }
+
   private handleToggleClick(e: Event) {
     e.stopPropagation();
+    
+    if (this.isRecordModeDisabled()) {
+      return;
+    }
+    
     this.recordMode = !this.recordMode;
     this.dispatchEvent(
       new CustomEvent("record-mode-changed", {
