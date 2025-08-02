@@ -33,10 +33,9 @@ export class AprilTagApp extends LitElement {
       left: 0;
       right: 0;
       bottom: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-        sans-serif;
-      background: #000;
-      color: #fff;
+      font-family: 'Courier New', monospace;
+      background: var(--dark-bg);
+      color: var(--text-primary);
     }
 
     .header {
@@ -45,18 +44,23 @@ export class AprilTagApp extends LitElement {
       left: 0;
       right: 0;
       z-index: 1000;
-      background: rgba(0, 0, 0, 0.8);
+      background: var(--glass-bg);
       backdrop-filter: blur(10px);
       padding: 10px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      border-bottom: 1px solid var(--neon-cyan);
     }
 
     .header h1 {
       font-size: 18px;
       font-weight: 600;
       margin: 0;
+      color: var(--neon-cyan);
+      text-shadow: 0 0 10px var(--neon-cyan);
+      text-transform: uppercase;
+      letter-spacing: 2px;
     }
 
     .header-controls {
@@ -78,7 +82,13 @@ export class AprilTagApp extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #222;
+      background: var(--darker-bg);
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      border-radius: 8px;
+      margin: 8px;
+      box-shadow: 
+        inset 0 0 20px rgba(0, 255, 255, 0.1),
+        0 0 30px rgba(0, 255, 255, 0.2);
     }
     
     .video-overlay {
@@ -117,43 +127,71 @@ export class AprilTagApp extends LitElement {
       bottom: 0;
       left: 0;
       right: 0;
-      background: rgba(0, 0, 0, 0.9);
+      background: var(--glass-bg);
       backdrop-filter: blur(10px);
       padding: 20px;
       display: flex;
       justify-content: center;
       gap: 20px;
+      border-top: 1px solid var(--neon-magenta);
+      box-shadow: 0 -2px 20px rgba(255, 0, 255, 0.2);
     }
 
     .capture-button {
       width: 70px;
       height: 70px;
       border-radius: 50%;
-      background: #fff;
-      border: 4px solid #ccc;
+      background: var(--card-bg);
+      border: 3px solid var(--neon-pink);
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.3s ease;
       display: flex;
       align-items: center;
       justify-content: center;
       opacity: 0.5;
       pointer-events: none;
       position: relative;
+      box-shadow: 
+        0 0 20px rgba(255, 0, 128, 0.4),
+        inset 0 0 20px rgba(255, 0, 128, 0.1);
     }
 
     .capture-button.enabled {
       opacity: 1;
       pointer-events: auto;
+      box-shadow: 
+        0 0 30px rgba(255, 0, 128, 0.6),
+        inset 0 0 20px rgba(255, 0, 128, 0.2);
     }
 
     .capture-button:active {
       transform: scale(0.95);
+      box-shadow: 
+        0 0 40px rgba(255, 0, 128, 0.8),
+        inset 0 0 30px rgba(255, 0, 128, 0.3);
     }
 
     .capture-button svg {
       width: 28px;
       height: 28px;
-      fill: #000;
+      fill: var(--neon-pink);
+      color: #ffffff;
+      filter: drop-shadow(0 0 8px var(--neon-pink));
+    }
+
+    .capture-button svg path {
+      stroke: var(--neon-pink);
+      fill: var(--neon-pink);
+    }
+
+    .capture-button svg rect {
+      fill: var(--neon-pink);
+      stroke: none;
+    }
+
+    .capture-button svg circle {
+      fill: var(--neon-pink);
+      stroke: none;
     }
 
 
@@ -162,17 +200,36 @@ export class AprilTagApp extends LitElement {
       top: 80px;
       left: 20px;
       right: 20px;
-      background: rgba(0, 0, 0, 0.8);
-      color: #fff;
+      background: var(--card-bg);
+      color: var(--text-accent);
       padding: 10px 20px;
       border-radius: 8px;
+      border: 1px solid var(--neon-green);
       text-align: center;
       display: none;
       z-index: 999;
+      box-shadow: 
+        0 0 20px rgba(0, 255, 128, 0.4),
+        inset 0 0 10px rgba(0, 255, 128, 0.1);
+      text-shadow: 0 0 10px var(--neon-green);
     }
 
     .status.visible {
       display: block;
+      animation: neonPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes neonPulse {
+      0%, 100% { 
+        box-shadow: 
+          0 0 20px rgba(0, 255, 128, 0.4),
+          inset 0 0 10px rgba(0, 255, 128, 0.1);
+      }
+      50% { 
+        box-shadow: 
+          0 0 30px rgba(0, 255, 128, 0.6),
+          inset 0 0 15px rgba(0, 255, 128, 0.2);
+      }
     }
 
   `;

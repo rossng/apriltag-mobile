@@ -13,10 +13,11 @@ export class RecordedTags extends LitElement {
       left: 0;
       right: 0;
       bottom: 0;
-      background: #000;
-      color: #fff;
+      background: var(--dark-bg);
+      color: var(--text-primary);
       padding: 20px;
       overflow-y: auto;
+      font-family: 'Courier New', monospace;
     }
 
     .header {
@@ -28,11 +29,16 @@ export class RecordedTags extends LitElement {
       font-size: 24px;
       font-weight: 600;
       margin: 0 0 10px 0;
+      color: var(--neon-cyan);
+      text-shadow: 0 0 15px var(--neon-cyan);
+      text-transform: uppercase;
+      letter-spacing: 2px;
     }
 
     .count {
       font-size: 16px;
-      color: #aaa;
+      color: var(--text-secondary);
+      text-shadow: 0 0 10px var(--neon-green);
     }
 
     .tags-container {
@@ -45,48 +51,77 @@ export class RecordedTags extends LitElement {
     }
 
     .tag-item {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: var(--card-bg);
+      border: 1px solid var(--neon-green);
       border-radius: 6px;
       padding: 8px 12px;
       font-size: 14px;
-      font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+      font-family: 'Courier New', monospace;
       white-space: nowrap;
+      color: var(--neon-green);
+      text-shadow: 0 0 8px var(--neon-green);
+      box-shadow: 
+        0 0 15px rgba(0, 255, 128, 0.3),
+        inset 0 0 10px rgba(0, 255, 128, 0.1);
+      transition: all 0.3s ease;
+    }
+
+    .tag-item:hover {
+      box-shadow: 
+        0 0 25px rgba(0, 255, 128, 0.5),
+        inset 0 0 15px rgba(0, 255, 128, 0.2);
     }
 
     .tag-item.range {
-      background: rgba(0, 122, 255, 0.2);
-      border-color: rgba(0, 122, 255, 0.4);
+      background: var(--card-bg);
+      border-color: var(--neon-blue);
+      color: var(--neon-blue);
+      text-shadow: 0 0 8px var(--neon-blue);
+      box-shadow: 
+        0 0 15px rgba(0, 128, 255, 0.3),
+        inset 0 0 10px rgba(0, 128, 255, 0.1);
+    }
+
+    .tag-item.range:hover {
+      box-shadow: 
+        0 0 25px rgba(0, 128, 255, 0.5),
+        inset 0 0 15px rgba(0, 128, 255, 0.2);
     }
 
     .close-button {
       position: absolute;
       top: 20px;
       right: 20px;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: var(--card-bg);
+      border: 1px solid var(--text-secondary);
       border-radius: 50%;
       width: 44px;
       height: 44px;
-      color: #fff;
+      color: #ffffff;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 18px;
-      transition: all 0.2s;
+      font-family: 'Courier New', monospace;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 10px rgba(176, 176, 208, 0.2);
     }
 
     .close-button:hover {
-      background: rgba(255, 255, 255, 0.2);
-      border-color: rgba(255, 255, 255, 0.3);
+      background: var(--card-bg);
+      border-color: var(--text-primary);
+      color: var(--neon-pink);
+      box-shadow: 0 0 15px rgba(255, 0, 128, 0.3);
+      text-shadow: 0 0 8px var(--neon-pink);
     }
 
     .empty-state {
       text-align: center;
-      color: #888;
+      color: var(--text-secondary);
       font-size: 16px;
       margin-top: 40px;
+      text-shadow: 0 0 10px var(--neon-purple);
     }
   `;
 
