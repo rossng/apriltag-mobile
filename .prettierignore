@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build output
+dist/
+build/
+
+# AprilTag standalone submodule
+apriltag-js-standalone/
+
+# Config files
+flake.lock
+tsconfig.json
+vite.config.js
+
+# Various file types that shouldn't be formatted
+*.wasm
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.svg
+*.ico
+*.pdf
+*.md5
+*.lock
+
+# Documentation generated files
+docs/
