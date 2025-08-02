@@ -7,6 +7,7 @@ export class Detections extends LitElement {
   @property({ type: Array }) detections: Detection[] = [];
   @property({ type: Object }) imageData?: ImageData;
   @property({ type: Boolean }) showImage: boolean = false;
+  @property({ type: Object }) videoDimensions?: { width: number; height: number };
 
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
@@ -40,7 +41,8 @@ export class Detections extends LitElement {
     if (
       changedProperties.has("detections") ||
       changedProperties.has("imageData") ||
-      changedProperties.has("showImage")
+      changedProperties.has("showImage") ||
+      changedProperties.has("videoDimensions")
     ) {
       this.drawCanvas();
     }
@@ -55,6 +57,10 @@ export class Detections extends LitElement {
       this.canvas.width = this.imageData.width;
       this.canvas.height = this.imageData.height;
       this.ctx.putImageData(this.imageData, 0, 0);
+    } else if (this.videoDimensions) {
+      // In live mode, use video dimensions
+      this.canvas.width = this.videoDimensions.width;
+      this.canvas.height = this.videoDimensions.height;
     }
 
     // Draw detections

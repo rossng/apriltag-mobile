@@ -1,39 +1,29 @@
 import { LitElement, html, css } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { AprilTagDetector, Detection } from "./detector";
+import { AprilTagDetector } from "./detector";
+import { AppMode, isValidModeTransition } from "./app-state";
+import { CameraController, DetectionController, RecordingController, StatusController } from "./controllers";
 import "./family-selector";
 import "./detections";
 import "./overflow-menu";
 import "./recorded-tags";
-import type { Detections } from "./detections";
 
 @customElement("apriltag-app")
 export class AprilTagApp extends LitElement {
   @property({ type: Object }) detector!: AprilTagDetector;
 
-  @state() private statusMessage: { message: string; until?: number } | null = null;
-  @state() private currentFamily =
-    localStorage.getItem("selectedFamily") || "tag36h11";
-  @state() private isPaused = false;
-  @state() private isProcessing = false;
-  @state() private captureEnabled = false;
-  @state() private detections: Detection[] = [];
-  @state() private frozenFrame: ImageData | null = null;
+  @state() private appMode: AppMode = AppMode.LIVE;
+  @state() private currentFamily = localStorage.getItem("selectedFamily") || "tag36h11";
   @state() private recordMode = false;
-  @state() private isRecording = false;
-  @state() private recordedTagIds: number[] = [];
-  @state() private showRecordedTags = false;
-  @state() private selectedImage: ImageData | null = null;
-  @state() private isImageMode = false;
-
-  private recordedTagIdsSet = new Set<number>();
+  @state() private captureEnabled = false;
 
   private video!: HTMLVideoElement;
-  private detectionCanvas!: Detections;
-  private stream: MediaStream | null = null;
-  private animationFrameId: number | null = null;
-  private hiddenCanvas!: HTMLCanvasElement;
-  private hiddenCtx!: CanvasRenderingContext2D;
+  
+  // Controllers
+  private cameraController!: CameraController;
+  private detectionController!: DetectionController;
+  private recordingController!: RecordingController;
+  private statusController!: StatusController;
 
   static styles = css`
     :host {
@@ -204,28 +194,29 @@ export class AprilTagApp extends LitElement {
         </div>
       </div>
 
-      <div class="status ${this.statusMessage ? "visible" : ""}">
-        ${this.statusMessage?.message}
+      <div class="status ${this.statusController?.hasMessage ? "visible" : ""}">
+        ${this.statusController?.message}
       </div>
 
       <div class="camera-container">
         <div class="video-overlay">
           <video
-            class="${this.isPaused || this.showRecordedTags || this.isImageMode ? 'hidden' : ''}"
+            class="${this.appMode !== AppMode.LIVE && this.appMode !== AppMode.RECORDING ? 'hidden' : ''}"
             autoplay
             muted
             playsinline
           ></video>
           <apriltag-detections
-            .detections=${this.detections}
-            .imageData=${this.isImageMode ? this.selectedImage : this.frozenFrame}
-            .showImage=${this.isPaused || this.isImageMode}
-            style="display: ${this.showRecordedTags ? 'none' : 'block'}"
+            .detections=${this.detectionController?.detections || []}
+            .imageData=${this.appMode === AppMode.IMAGE_MODE ? this.detectionController?.selectedImage : this.detectionController?.frozenFrame}
+            .showImage=${this.appMode === AppMode.PAUSED || this.appMode === AppMode.IMAGE_MODE}
+            .videoDimensions=${this.cameraController?.dimensions}
+            style="display: ${this.appMode === AppMode.VIEWING_RECORDED ? 'none' : 'block'}"
           ></apriltag-detections>
-          ${this.showRecordedTags ? html`
+          ${this.appMode === AppMode.VIEWING_RECORDED ? html`
             <recorded-tags
-              .tagIds=${this.recordedTagIds}
-              @close=${this.hideRecordedTags}
+              .tagIds=${this.recordingController?.tagIds || []}
+              @close=${this.handleHideRecorded}
             ></recorded-tags>
           ` : ''}
         </div>
@@ -233,8 +224,8 @@ export class AprilTagApp extends LitElement {
 
       <div class="controls">
         <button
-          class="capture-button ${this.captureEnabled && !this.showRecordedTags ? "enabled" : ""}"
-          @click=${this.toggleDetection}
+          class="capture-button ${this.captureEnabled && this.appMode !== AppMode.VIEWING_RECORDED ? "enabled" : ""}"
+          @click=${this.handleToggleDetection}
         >
           ${this.getButtonIcon()}
         </button>
@@ -244,13 +235,6 @@ export class AprilTagApp extends LitElement {
 
   async firstUpdated() {
     this.video = this.shadowRoot!.querySelector("video")!;
-    this.detectionCanvas = this.shadowRoot!.querySelector(
-      "apriltag-detections"
-    )! as Detections;
-
-    // Create hidden canvas for frame capture
-    this.hiddenCanvas = document.createElement('canvas');
-    this.hiddenCtx = this.hiddenCanvas.getContext('2d')!;
 
     await this.updateComplete;
     await this.init();
@@ -259,43 +243,75 @@ export class AprilTagApp extends LitElement {
   async init(): Promise<void> {
     this.detector.init();
     this.detector.setFamily(this.currentFamily);
-    await this.initializeCamera();
+    
+    // Create all controllers after element is connected
+    this.cameraController = new CameraController(this);
+    this.detectionController = new DetectionController(this, this.detector);
+    this.recordingController = new RecordingController(this);
+    this.statusController = new StatusController(this);
+    
+    this.detectionController.setVideo(this.video);
+    
+    // Set up listeners BEFORE initializing camera
+    this.setupControllerListeners();
     this.setupGlobalListeners();
+    
+    // Now initialize camera - this will dispatch events
+    await this.cameraController.initialize();
+    
     this.captureEnabled = true;
-    this.startContinuousDetection();
+    
+    // Start detection since we're already in LIVE mode
+    this.detectionController.setMode(AppMode.LIVE);
+    this.detectionController.startContinuousDetection();
   }
 
-  async initializeCamera(): Promise<void> {
-    try {
-      this.setStatus("Requesting camera permission...");
-
-      const constraints: MediaStreamConstraints = {
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-      };
-
-      this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-      this.video.srcObject = this.stream;
-
+  setupControllerListeners(): void {
+    // Camera controller events
+    this.addEventListener('camera-ready', (e: any) => {
+      console.log('Camera ready event received:', e.detail);
+      this.video.srcObject = e.detail.stream;
       this.video.addEventListener("loadedmetadata", () => {
-        this.hideStatusMessage();
+        console.log('Video metadata loaded:', this.video.videoWidth, this.video.videoHeight);
+        this.statusController?.clearMessage();
+        this.cameraController?.updateDimensions(this.video.videoWidth, this.video.videoHeight);
       });
-    } catch (error) {
-      console.error("Error accessing camera:", error);
-      this.setStatus(
-        "Camera access denied. Please allow camera permissions and refresh."
-      );
-    }
+    });
+    
+    this.addEventListener('camera-error', (e: any) => {
+      this.statusController?.setPersistentMessage(e.detail.message);
+    });
+    
+    this.addEventListener('status-update', (e: any) => {
+      this.statusController?.setMessage(e.detail.message);
+    });
+    
+    this.addEventListener('status-clear', () => {
+      this.statusController?.clearMessage();
+    });
+    
+    // Detection controller events
+    this.addEventListener('detections-updated', (e: any) => {
+      if (this.recordingController?.isActive) {
+        this.recordingController?.recordDetections(e.detail.detections);
+      }
+    });
+    
+    // Recording controller events
+    this.addEventListener('recording-stopped', () => {
+      this.setAppMode(AppMode.VIEWING_RECORDED);
+    });
+    
+    this.addEventListener('recording-hidden', () => {
+      this.setAppMode(AppMode.LIVE);
+    });
   }
 
   setupGlobalListeners(): void {
     // Prevent video from pausing on page visibility change
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible" && this.stream) {
-        this.video.srcObject = this.stream;
+      if (document.visibilityState === "visible" && this.cameraController.stream) {
+        this.video.srcObject = this.cameraController.stream;
       }
     });
   }
@@ -309,14 +325,38 @@ export class AprilTagApp extends LitElement {
     const { recordMode } = e.detail;
     this.recordMode = recordMode;
     
-    if (!recordMode && this.isRecording) {
-      this.stopRecording();
+    if (!recordMode && this.recordingController?.isActive) {
+      this.recordingController.stopRecording();
     }
   }
 
   handleImageSelected(e: CustomEvent): void {
     const { file } = e.detail;
-    this.loadImageFile(file);
+    this.detectionController?.loadImageFile(file);
+    this.setAppMode(AppMode.IMAGE_MODE);
+  }
+  
+  handleHideRecorded(): void {
+    this.recordingController?.hideRecorded();
+  }
+  
+  handleToggleDetection(): void {
+    if (this.appMode === AppMode.IMAGE_MODE) {
+      this.setAppMode(AppMode.LIVE);
+    } else if (this.recordMode) {
+      if (this.recordingController?.isActive) {
+        this.recordingController.stopRecording();
+      } else {
+        this.recordingController?.startRecording();
+        this.setAppMode(AppMode.RECORDING);
+      }
+    } else {
+      if (this.appMode === AppMode.PAUSED) {
+        this.setAppMode(AppMode.LIVE);
+      } else {
+        this.setAppMode(AppMode.PAUSED);
+      }
+    }
   }
 
   switchFamily(family: string): void {
@@ -325,205 +365,58 @@ export class AprilTagApp extends LitElement {
     if (success) {
       this.currentFamily = family;
       localStorage.setItem("selectedFamily", family);
-      this.setStatus(`Switched to ${family}`, 3000);
+      this.statusController?.setTemporaryMessage(`Switched to ${family}`, 3000);
     } else {
-      this.setStatus(`Failed to switch to ${family}`);
+      this.statusController?.setMessage(`Failed to switch to ${family}`);
     }
   }
-
-  startContinuousDetection(): void {
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
+  
+  setAppMode(newMode: AppMode): void {
+    // Skip if already in the same mode
+    if (this.appMode === newMode) {
+      return;
     }
     
-    this.runDetectionLoop();
-  }
-
-  stopContinuousDetection(): void {
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
-    }
-  }
-
-  private runDetectionLoop(): void {
-    if (this.isPaused || this.isImageMode) {
+    if (!isValidModeTransition(this.appMode, newMode)) {
+      console.warn(`Invalid mode transition from ${this.appMode} to ${newMode}`);
       return;
     }
-
-    this.animationFrameId = requestAnimationFrame(() => {
-      this.processCurrentFrame();
-      this.runDetectionLoop();
-    });
-  }
-
-  private async processCurrentFrame(): Promise<void> {
-    if (this.isProcessing || !this.detector?.isReady() || !this.video.videoWidth) {
-      return;
-    }
-
-    try {
-      this.isProcessing = true;
-
-      // Set overlay canvas dimensions to match video
-      this.detectionCanvas.setCanvasDimensions(this.video.videoWidth, this.video.videoHeight);
-
-      // Capture current frame to hidden canvas
-      this.hiddenCanvas.width = this.video.videoWidth;
-      this.hiddenCanvas.height = this.video.videoHeight;
-      this.hiddenCtx.drawImage(this.video, 0, 0);
-
-      const imageData = this.hiddenCtx.getImageData(
-        0,
-        0,
-        this.hiddenCanvas.width,
-        this.hiddenCanvas.height
-      );
-
-      // Run detection
-      this.detections = this.detector.detectFromImageData(imageData);
+    
+    this.appMode = newMode;
+    
+    // Only update detection controller if it's initialized
+    if (this.detectionController) {
+      this.detectionController.setMode(newMode);
       
-      // Track detected tag IDs during recording
-      if (this.isRecording && this.detections.length > 0) {
-        this.detections.forEach(detection => {
-          this.recordedTagIdsSet.add(detection.id);
-        });
-        this.recordedTagIds = Array.from(this.recordedTagIdsSet);
-      }
-    } catch (error) {
-      console.error("Error processing frame:", error);
-    } finally {
-      this.isProcessing = false;
-    }
-  }
-
-  toggleDetection(): void {
-    if (this.isImageMode) {
-      this.exitImageMode();
-    } else if (this.recordMode) {
-      if (this.isRecording) {
-        this.stopRecording();
-      } else {
-        this.startRecording();
-      }
-    } else {
-      this.isPaused = !this.isPaused;
-      
-      if (this.isPaused) {
-        this.freezeCurrentFrame();
-      } else {
-        this.resumeLiveVideo();
+      // Handle mode-specific logic
+      switch (newMode) {
+        case AppMode.LIVE:
+          this.detectionController.resumeLiveDetection();
+          break;
+        case AppMode.PAUSED:
+          this.detectionController.freezeCurrentFrame();
+          break;
+        case AppMode.IMAGE_MODE:
+          // Image loading is handled in the detection controller
+          break;
+        case AppMode.RECORDING:
+          this.detectionController.startContinuousDetection();
+          break;
+        case AppMode.VIEWING_RECORDED:
+          this.detectionController.stopContinuousDetection();
+          break;
       }
     }
   }
 
-  private freezeCurrentFrame(): void {
-    if (!this.video.videoWidth) return;
-
-    // Capture current frame
-    this.hiddenCanvas.width = this.video.videoWidth;
-    this.hiddenCanvas.height = this.video.videoHeight;
-    this.hiddenCtx.drawImage(this.video, 0, 0);
-
-    this.frozenFrame = this.hiddenCtx.getImageData(
-      0,
-      0,
-      this.hiddenCanvas.width,
-      this.hiddenCanvas.height
-    );
-
-    // Run detection on frozen frame
-    if (this.detector?.isReady()) {
-      this.detections = this.detector.detectFromImageData(this.frozenFrame);
-    }
-
-    // Stop continuous detection
-    this.stopContinuousDetection();
-  }
-
-  private resumeLiveVideo(): void {
-    this.frozenFrame = null;
-    this.startContinuousDetection();
-  }
-
-  private startRecording(): void {
-    this.isRecording = true;
-    this.recordedTagIds = [];
-    this.recordedTagIdsSet.clear();
-  }
-
-  private stopRecording(): void {
-    this.isRecording = false;
-    this.showRecordedTags = true;
-  }
-
-  private hideRecordedTags(): void {
-    this.showRecordedTags = false;
-    // Resume live video when closing recorded tags view
-    if (!this.isPaused && !this.isImageMode) {
-      this.startContinuousDetection();
-    }
-  }
-
-  private async loadImageFile(file: File): Promise<void> {
-    try {
-      this.setStatus("Loading image...");
-      
-      const img = new Image();
-      img.onload = () => {
-        // Create canvas to get ImageData
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d')!;
-        
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
-        
-        this.selectedImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        
-        // Run detection on the image
-        if (this.detector?.isReady()) {
-          this.detections = this.detector.detectFromImageData(this.selectedImage);
-        }
-        
-        // Stop continuous detection and enter image mode
-        this.stopContinuousDetection();
-        this.isImageMode = true;
-        this.isPaused = false;
-        this.showRecordedTags = false;
-        
-        this.hideStatusMessage();
-        
-        // Clean up
-        URL.revokeObjectURL(img.src);
-      };
-      
-      img.onerror = () => {
-        this.setStatus("Failed to load image");
-        URL.revokeObjectURL(img.src);
-      };
-      
-      img.src = URL.createObjectURL(file);
-    } catch (error) {
-      console.error("Error loading image:", error);
-      this.setStatus("Failed to load image");
-    }
-  }
-
-  private exitImageMode(): void {
-    this.isImageMode = false;
-    this.selectedImage = null;
-    this.detections = [];
-    this.startContinuousDetection();
-  }
 
   private getButtonIcon() {
-    if (this.isImageMode) {
+    if (this.appMode === AppMode.IMAGE_MODE) {
       return html`<svg viewBox="0 0 24 24">
         <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>`;
     } else if (this.recordMode) {
-      if (this.isRecording) {
+      if (this.recordingController?.isActive) {
         return html`<svg viewBox="0 0 24 24">
           <rect x="6" y="6" width="12" height="12" rx="2"/>
         </svg>`;
@@ -533,7 +426,7 @@ export class AprilTagApp extends LitElement {
         </svg>`;
       }
     } else {
-      return this.isPaused
+      return this.appMode === AppMode.PAUSED
         ? html`<svg viewBox="0 0 24 24">
             <path d="M8 5v14l11-7z"/>
           </svg>`
@@ -544,26 +437,10 @@ export class AprilTagApp extends LitElement {
     }
   }
 
-  setStatus(message: string, fadeOutAfter?: number): void {
-    const until = fadeOutAfter ? Date.now() + fadeOutAfter : undefined;
-    this.statusMessage = { message, until };
-    
-    if (until) {
-      setTimeout(() => {
-        if (this.statusMessage?.until === until) {
-          this.statusMessage = null;
-        }
-      }, fadeOutAfter);
-    }
-  }
-
-  hideStatusMessage(): void {
-    this.statusMessage = null;
-  }
 
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
-    this.stopContinuousDetection();
+    this.cameraController?.cleanup();
   }
 }
