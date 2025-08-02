@@ -144,6 +144,40 @@ export class OverflowMenu extends LitElement {
       cursor: not-allowed;
       pointer-events: none;
     }
+
+    @media (max-width: 480px) {
+      .menu-button {
+        padding: 6px;
+      }
+      
+      .menu-button svg {
+        width: 18px;
+        height: 18px;
+      }
+      
+      .dropdown-menu {
+        min-width: 140px;
+      }
+      
+      .menu-item {
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+      
+      .toggle-switch {
+        width: 28px;
+        height: 16px;
+      }
+      
+      .toggle-switch::after {
+        width: 12px;
+        height: 12px;
+      }
+      
+      .toggle-switch.active::after {
+        transform: translateX(12px);
+      }
+    }
   `;
 
   render() {

@@ -40,7 +40,7 @@ export class Detections extends LitElement {
 
   render() {
     return html`
-      <canvas class="${this.showImage ? 'fill-mode' : 'cover-mode'}"></canvas>
+      <canvas class="cover-mode"></canvas>
     `;
   }
 

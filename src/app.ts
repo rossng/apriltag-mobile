@@ -57,6 +57,7 @@ export class AprilTagApp extends LitElement {
       justify-content: space-between;
       align-items: center;
       border-bottom: 1px solid var(--neon-cyan);
+      min-height: 60px;
     }
 
     .header h1 {
@@ -67,12 +68,31 @@ export class AprilTagApp extends LitElement {
       text-shadow: 0 0 10px var(--neon-cyan);
       text-transform: uppercase;
       letter-spacing: 2px;
+      flex-shrink: 1;
+      min-width: 0;
     }
 
     .header-controls {
       display: flex;
       align-items: center;
       gap: 12px;
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 480px) {
+      .header {
+        padding: 8px 12px;
+        gap: 8px;
+      }
+
+      .header h1 {
+        font-size: 14px;
+        letter-spacing: 1px;
+      }
+
+      .header-controls {
+        gap: 8px;
+      }
     }
 
     family-selector {
@@ -81,7 +101,7 @@ export class AprilTagApp extends LitElement {
 
     .camera-container {
       position: fixed;
-      top: 60px;
+      top: 80px;
       left: 0;
       right: 0;
       bottom: 120px;
@@ -201,7 +221,7 @@ export class AprilTagApp extends LitElement {
 
     .status {
       position: fixed;
-      top: 80px;
+      top: 100px;
       left: 20px;
       right: 20px;
       background: var(--card-bg);
