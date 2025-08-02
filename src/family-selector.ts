@@ -26,7 +26,9 @@ export class FamilySelector extends LitElement {
       font-family: 'Courier New', monospace;
       padding: 8px 16px;
       cursor: pointer;
-      min-width: 220px;
+      min-width: 120px;
+      max-width: 240px;
+      width: auto;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -66,7 +68,6 @@ export class FamilySelector extends LitElement {
     .dropdown-menu {
       position: absolute;
       top: calc(100% + 4px);
-      left: 0;
       right: 0;
       background: var(--card-bg);
       backdrop-filter: blur(10px);
@@ -78,6 +79,8 @@ export class FamilySelector extends LitElement {
       box-shadow:
         0 4px 20px rgba(128, 0, 255, 0.4),
         inset 0 0 20px rgba(128, 0, 255, 0.1);
+      min-width: max-content;
+      width: auto;
     }
 
     .dropdown-menu.active {
@@ -108,6 +111,36 @@ export class FamilySelector extends LitElement {
       text-shadow: 0 0 5px var(--neon-purple);
       box-shadow: inset 0 0 15px rgba(128, 0, 255, 0.4);
     }
+
+    @media (max-width: 480px) {
+      .dropdown {
+        min-width: 100px;
+        max-width: 150px;
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+      
+      .dropdown-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      
+      .dropdown-arrow {
+        margin-left: 4px;
+      }
+      
+      .dropdown-menu {
+        right: 0;
+        left: auto;
+        min-width: 180px;
+      }
+      
+      .menu-item {
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+    }
   `;
 
   private families: TagFamily[] = [
@@ -132,7 +165,7 @@ export class FamilySelector extends LitElement {
         class="dropdown ${this.showMenu ? 'active' : ''}"
         @click=${this.toggleMenu}
       >
-        <span class="dropdown-label">${currentLabel}</span>
+        <span class="dropdown-label" title="${currentFamilyData?.label || currentLabel}">${currentLabel}</span>
         <span class="dropdown-arrow">▼</span>
       </div>
       <div class="dropdown-menu ${this.showMenu ? 'active' : ''}">

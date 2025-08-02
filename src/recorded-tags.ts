@@ -7,7 +7,8 @@ export class RecordedTags extends LitElement {
 
   static styles = css`
     :host {
-      display: block;
+      display: flex;
+      flex-direction: column;
       position: absolute;
       top: 0;
       left: 0;
@@ -88,10 +89,11 @@ export class RecordedTags extends LitElement {
         inset 0 0 15px rgba(0, 128, 255, 0.2);
     }
 
+    .spacer {
+      flex-grow: 1;
+    }
+
     .close-button {
-      position: absolute;
-      top: 20px;
-      right: 20px;
       background: var(--card-bg);
       border: 1px solid var(--text-secondary);
       border-radius: 50%;
@@ -106,6 +108,8 @@ export class RecordedTags extends LitElement {
       font-family: 'Courier New', monospace;
       transition: all 0.3s ease;
       box-shadow: 0 0 10px rgba(176, 176, 208, 0.2);
+      align-self: center;
+      margin-top: 20px;
     }
 
     .close-button:hover {
@@ -129,8 +133,6 @@ export class RecordedTags extends LitElement {
     const compressedTags = this.compressTagIds(this.tagIds);
 
     return html`
-      <button class="close-button" @click=${this.close}>×</button>
-
       <div class="header">
         <h2>Recorded Tags</h2>
         ${this.tagIds.length > 0
@@ -154,6 +156,10 @@ export class RecordedTags extends LitElement {
               )}
             </div>
           `}
+
+      <div class="spacer"></div>
+      
+      <button class="close-button" @click=${this.close}>×</button>
     `;
   }
 
