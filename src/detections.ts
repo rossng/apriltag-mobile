@@ -23,13 +23,20 @@ export class Detections extends LitElement {
     canvas {
       width: 100%;
       height: 100%;
-      object-fit: cover;
       background: transparent;
+    }
+
+    canvas.cover-mode {
+      object-fit: cover;
+    }
+
+    canvas.fill-mode {
+      object-fit: fill;
     }
   `;
 
   render() {
-    return html` <canvas></canvas> `;
+    return html` <canvas class="${this.showImage ? 'fill-mode' : 'cover-mode'}"></canvas> `;
   }
 
   firstUpdated() {
