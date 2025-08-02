@@ -119,6 +119,9 @@ export class OverflowMenu extends LitElement {
           <span>Record Mode</span>
           <div class="toggle-switch ${this.recordMode ? 'active' : ''}" @click=${this.handleToggleClick}></div>
         </div>
+        <div class="menu-item" @click=${this.handleSelectImage}>
+          <span>Select Image</span>
+        </div>
       </div>
     `;
   }
@@ -157,5 +160,30 @@ export class OverflowMenu extends LitElement {
       bubbles: true,
       composed: true
     }));
+  }
+
+  private handleSelectImage(e: Event) {
+    e.stopPropagation();
+    this.showMenu = false;
+    
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.display = 'none';
+    
+    input.addEventListener('change', (event) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (file) {
+        this.dispatchEvent(new CustomEvent('image-selected', {
+          detail: { file },
+          bubbles: true,
+          composed: true
+        }));
+      }
+      input.remove();
+    });
+    
+    document.body.appendChild(input);
+    input.click();
   }
 }
