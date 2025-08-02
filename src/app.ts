@@ -3,6 +3,8 @@ import { customElement, property, state } from "lit/decorators.js";
 import { AprilTagDetector, Detection } from "./detector";
 import "./family-selector";
 import "./detections";
+import "./overflow-menu";
+import "./recorded-tags";
 import type { Detections } from "./detections";
 
 @customElement("apriltag-app")
@@ -17,6 +19,12 @@ export class AprilTagApp extends LitElement {
   @state() private captureEnabled = false;
   @state() private detections: Detection[] = [];
   @state() private frozenFrame: ImageData | null = null;
+  @state() private recordMode = false;
+  @state() private isRecording = false;
+  @state() private recordedTagIds: number[] = [];
+  @state() private showRecordedTags = false;
+
+  private recordedTagIdsSet = new Set<number>();
 
   private video!: HTMLVideoElement;
   private detectionCanvas!: Detections;
@@ -186,6 +194,10 @@ export class AprilTagApp extends LitElement {
             .currentFamily=${this.currentFamily}
             @family-selected=${this.handleFamilySelected}
           ></family-selector>
+          <overflow-menu
+            .recordMode=${this.recordMode}
+            @record-mode-changed=${this.handleRecordModeChanged}
+          ></overflow-menu>
         </div>
       </div>
 
@@ -196,7 +208,7 @@ export class AprilTagApp extends LitElement {
       <div class="camera-container">
         <div class="video-overlay">
           <video
-            class="${this.isPaused ? 'hidden' : ''}"
+            class="${this.isPaused || this.showRecordedTags ? 'hidden' : ''}"
             autoplay
             muted
             playsinline
@@ -205,23 +217,23 @@ export class AprilTagApp extends LitElement {
             .detections=${this.detections}
             .imageData=${this.frozenFrame}
             .showImage=${this.isPaused}
+            style="display: ${this.showRecordedTags ? 'none' : 'block'}"
           ></apriltag-detections>
+          ${this.showRecordedTags ? html`
+            <recorded-tags
+              .tagIds=${this.recordedTagIds}
+              @close=${this.hideRecordedTags}
+            ></recorded-tags>
+          ` : ''}
         </div>
       </div>
 
       <div class="controls">
         <button
-          class="capture-button ${this.captureEnabled ? "enabled" : ""}"
+          class="capture-button ${this.captureEnabled && !this.showRecordedTags ? "enabled" : ""}"
           @click=${this.toggleDetection}
         >
-          ${this.isPaused
-            ? html`<svg viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z"/>
-              </svg>`
-            : html`<svg viewBox="0 0 24 24">
-                <rect x="6" y="4" width="4" height="16"/>
-                <rect x="14" y="4" width="4" height="16"/>
-              </svg>`}
+          ${this.getButtonIcon()}
         </button>
       </div>
     `;
@@ -290,6 +302,15 @@ export class AprilTagApp extends LitElement {
     this.switchFamily(familyId);
   }
 
+  handleRecordModeChanged(e: CustomEvent): void {
+    const { recordMode } = e.detail;
+    this.recordMode = recordMode;
+    
+    if (!recordMode && this.isRecording) {
+      this.stopRecording();
+    }
+  }
+
   switchFamily(family: string): void {
     const success = this.detector.setFamily(family);
 
@@ -353,6 +374,14 @@ export class AprilTagApp extends LitElement {
 
       // Run detection
       this.detections = this.detector.detectFromImageData(imageData);
+      
+      // Track detected tag IDs during recording
+      if (this.isRecording && this.detections.length > 0) {
+        this.detections.forEach(detection => {
+          this.recordedTagIdsSet.add(detection.id);
+        });
+        this.recordedTagIds = Array.from(this.recordedTagIdsSet);
+      }
     } catch (error) {
       console.error("Error processing frame:", error);
     } finally {
@@ -361,12 +390,20 @@ export class AprilTagApp extends LitElement {
   }
 
   toggleDetection(): void {
-    this.isPaused = !this.isPaused;
-    
-    if (this.isPaused) {
-      this.freezeCurrentFrame();
+    if (this.recordMode) {
+      if (this.isRecording) {
+        this.stopRecording();
+      } else {
+        this.startRecording();
+      }
     } else {
-      this.resumeLiveVideo();
+      this.isPaused = !this.isPaused;
+      
+      if (this.isPaused) {
+        this.freezeCurrentFrame();
+      } else {
+        this.resumeLiveVideo();
+      }
     }
   }
 
@@ -397,6 +434,48 @@ export class AprilTagApp extends LitElement {
   private resumeLiveVideo(): void {
     this.frozenFrame = null;
     this.startContinuousDetection();
+  }
+
+  private startRecording(): void {
+    this.isRecording = true;
+    this.recordedTagIds = [];
+    this.recordedTagIdsSet.clear();
+  }
+
+  private stopRecording(): void {
+    this.isRecording = false;
+    this.showRecordedTags = true;
+  }
+
+  private hideRecordedTags(): void {
+    this.showRecordedTags = false;
+    // Resume live video when closing recorded tags view
+    if (!this.isPaused) {
+      this.startContinuousDetection();
+    }
+  }
+
+  private getButtonIcon() {
+    if (this.recordMode) {
+      if (this.isRecording) {
+        return html`<svg viewBox="0 0 24 24">
+          <rect x="6" y="6" width="12" height="12" rx="2"/>
+        </svg>`;
+      } else {
+        return html`<svg viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="8" fill="red"/>
+        </svg>`;
+      }
+    } else {
+      return this.isPaused
+        ? html`<svg viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"/>
+          </svg>`
+        : html`<svg viewBox="0 0 24 24">
+            <rect x="6" y="4" width="4" height="16"/>
+            <rect x="14" y="4" width="4" height="16"/>
+          </svg>`;
+    }
   }
 
   setStatus(message: string, fadeOutAfter?: number): void {
