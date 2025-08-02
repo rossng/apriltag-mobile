@@ -7,9 +7,9 @@ export class RecordingController implements ReactiveController {
   private _state: RecordingState = {
     isActive: false,
     tagIds: [],
-    isViewing: false
+    isViewing: false,
   };
-  
+
   private recordedTagIdsSet = new Set<number>();
 
   constructor(host: ReactiveControllerHost) {
@@ -45,9 +45,9 @@ export class RecordingController implements ReactiveController {
     this._state = {
       isActive: true,
       tagIds: [],
-      isViewing: false
+      isViewing: false,
     };
-    
+
     this.recordedTagIdsSet.clear();
     this.host.requestUpdate();
     this.dispatchEvent('recording-started');
@@ -55,13 +55,13 @@ export class RecordingController implements ReactiveController {
 
   stopRecording(): void {
     if (!this._state.isActive) return;
-    
+
     this._state = {
       ...this._state,
       isActive: false,
-      isViewing: true
+      isViewing: true,
     };
-    
+
     this.host.requestUpdate();
     this.dispatchEvent('recording-stopped', { tagIds: this._state.tagIds });
   }
@@ -69,9 +69,9 @@ export class RecordingController implements ReactiveController {
   hideRecorded(): void {
     this._state = {
       ...this._state,
-      isViewing: false
+      isViewing: false,
     };
-    
+
     this.host.requestUpdate();
     this.dispatchEvent('recording-hidden');
   }
@@ -80,31 +80,31 @@ export class RecordingController implements ReactiveController {
     this._state = {
       isActive: false,
       tagIds: [],
-      isViewing: false
+      isViewing: false,
     };
-    
+
     this.recordedTagIdsSet.clear();
     this.host.requestUpdate();
   }
 
   recordDetections(detections: Detection[]): void {
     if (!this._state.isActive || detections.length === 0) return;
-    
+
     let hasNewTags = false;
-    
-    detections.forEach(detection => {
+
+    detections.forEach((detection) => {
       if (!this.recordedTagIdsSet.has(detection.id)) {
         this.recordedTagIdsSet.add(detection.id);
         hasNewTags = true;
       }
     });
-    
+
     if (hasNewTags) {
       this._state = {
         ...this._state,
-        tagIds: Array.from(this.recordedTagIdsSet).sort((a, b) => a - b)
+        tagIds: Array.from(this.recordedTagIdsSet).sort((a, b) => a - b),
       };
-      
+
       this.host.requestUpdate();
       this.dispatchEvent('tags-updated', { tagIds: this._state.tagIds });
     }
@@ -112,11 +112,13 @@ export class RecordingController implements ReactiveController {
 
   private dispatchEvent(type: string, detail?: any): void {
     if (this.host instanceof EventTarget) {
-      this.host.dispatchEvent(new CustomEvent(type, { 
-        detail,
-        bubbles: true,
-        composed: true 
-      }));
+      this.host.dispatchEvent(
+        new CustomEvent(type, {
+          detail,
+          bubbles: true,
+          composed: true,
+        })
+      );
     }
   }
 }

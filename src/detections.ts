@@ -1,13 +1,16 @@
-import { LitElement, html, css } from "lit";
-import { customElement, property } from "lit/decorators.js";
-import type { Detection } from "./detector";
+import { LitElement, html, css } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
+import type { Detection } from './detector';
 
-@customElement("apriltag-detections")
+@customElement('apriltag-detections')
 export class Detections extends LitElement {
   @property({ type: Array }) detections: Detection[] = [];
   @property({ type: Object }) imageData?: ImageData;
   @property({ type: Boolean }) showImage: boolean = false;
-  @property({ type: Object }) videoDimensions?: { width: number; height: number };
+  @property({ type: Object }) videoDimensions?: {
+    width: number;
+    height: number;
+  };
 
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
@@ -36,20 +39,22 @@ export class Detections extends LitElement {
   `;
 
   render() {
-    return html` <canvas class="${this.showImage ? 'fill-mode' : 'cover-mode'}"></canvas> `;
+    return html`
+      <canvas class="${this.showImage ? 'fill-mode' : 'cover-mode'}"></canvas>
+    `;
   }
 
   firstUpdated() {
-    this.canvas = this.shadowRoot!.querySelector("canvas")!;
-    this.ctx = this.canvas.getContext("2d")!;
+    this.canvas = this.shadowRoot!.querySelector('canvas')!;
+    this.ctx = this.canvas.getContext('2d')!;
   }
 
   updated(changedProperties: Map<string, any>) {
     if (
-      changedProperties.has("detections") ||
-      changedProperties.has("imageData") ||
-      changedProperties.has("showImage") ||
-      changedProperties.has("videoDimensions")
+      changedProperties.has('detections') ||
+      changedProperties.has('imageData') ||
+      changedProperties.has('showImage') ||
+      changedProperties.has('videoDimensions')
     ) {
       this.drawCanvas();
     }
@@ -88,7 +93,7 @@ export class Detections extends LitElement {
     // Calculate font size relative to viewport dimensions
     const baseFontSize = this.calculateViewportRelativeFontSize();
     this.ctx.font = `bold ${baseFontSize}px Arial`;
-    this.ctx.textAlign = "center";
+    this.ctx.textAlign = 'center';
 
     // Calculate scaled dimensions for consistent appearance
     const outlineWidth = Math.max(1, Math.round(baseFontSize * 0.07)); // ~7% of font size
@@ -100,9 +105,9 @@ export class Detections extends LitElement {
       const corners = detection.corners;
 
       // Draw tag outline with neon cyan glow
-      this.ctx.shadowColor = "#00ffff";
+      this.ctx.shadowColor = '#00ffff';
       this.ctx.shadowBlur = 10;
-      this.ctx.strokeStyle = "#00ffff";
+      this.ctx.strokeStyle = '#00ffff';
       this.ctx.lineWidth = outlineWidth;
       this.ctx.beginPath();
       this.ctx.moveTo(corners[0].x, corners[0].y);
@@ -114,7 +119,7 @@ export class Detections extends LitElement {
 
       // Draw top-left corner as neon magenta circle
       this.ctx.shadowBlur = 0;
-      this.ctx.fillStyle = "#ff00ff";
+      this.ctx.fillStyle = '#ff00ff';
       this.ctx.beginPath();
       this.ctx.arc(corners[0].x, corners[0].y, circleRadius, 0, 2 * Math.PI);
       this.ctx.fill();
@@ -122,26 +127,26 @@ export class Detections extends LitElement {
       // Draw tag ID with neon styling and glow
       const center = detection.center;
       const text = detection.id.toString();
-      
+
       // Reset shadow for text outline
       this.ctx.shadowBlur = 0;
-      
+
       // Draw dark outline (stroke)
-      this.ctx.strokeStyle = "#000000";
+      this.ctx.strokeStyle = '#000000';
       this.ctx.lineWidth = textOutlineWidth;
       this.ctx.strokeText(text, center.x, center.y + 10);
-      
+
       // Draw cyan outline (thinner)
-      this.ctx.strokeStyle = "#00ffff";
+      this.ctx.strokeStyle = '#00ffff';
       this.ctx.lineWidth = textInnerOutlineWidth;
       this.ctx.strokeText(text, center.x, center.y + 10);
-      
+
       // Draw neon green fill with glow
-      this.ctx.shadowColor = "#00ff80";
+      this.ctx.shadowColor = '#00ff80';
       this.ctx.shadowBlur = 5;
-      this.ctx.fillStyle = "#00ff80";
+      this.ctx.fillStyle = '#00ff80';
       this.ctx.fillText(text, center.x, center.y + 10);
-      
+
       // Reset shadow for next detection
       this.ctx.shadowBlur = 0;
     });
@@ -156,21 +161,21 @@ export class Detections extends LitElement {
     const canvasRect = this.canvas.getBoundingClientRect();
     const displayWidth = canvasRect.width;
     const displayHeight = canvasRect.height;
-    
+
     // Base font size relative to the smaller viewport dimension
     // This ensures labels are readable on both wide and tall images
     const minViewportDimension = Math.min(displayWidth, displayHeight);
-    
+
     // Scale factor: roughly 3% of the smaller viewport dimension
     // This provides good readability while not being too large
     const baseFontSize = Math.max(12, Math.round(minViewportDimension * 0.03));
-    
+
     // Apply scaling factor based on canvas resolution vs display size
     // This accounts for the object-fit: cover scaling
     const scaleX = this.canvas.width / displayWidth;
     const scaleY = this.canvas.height / displayHeight;
     const averageScale = (scaleX + scaleY) / 2;
-    
+
     return Math.round(baseFontSize * averageScale);
   }
 

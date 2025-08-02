@@ -10,7 +10,7 @@ export interface TagFamily {
 export class FamilySelector extends LitElement {
   @property({ type: String }) currentFamily = 'tag36h11';
   @property({ type: Boolean }) showMenu = false;
-  
+
   static styles = css`
     :host {
       display: block;
@@ -75,7 +75,7 @@ export class FamilySelector extends LitElement {
       padding: 4px;
       z-index: 1001;
       display: none;
-      box-shadow: 
+      box-shadow:
         0 4px 20px rgba(128, 0, 255, 0.4),
         inset 0 0 20px rgba(128, 0, 255, 0.1);
     }
@@ -118,30 +118,39 @@ export class FamilySelector extends LitElement {
     { id: 'tagStandard52h13', label: 'tagStandard52h13 (48714 tags)' },
     { id: 'tagCircle21h7', label: 'tagCircle21h7 (38 tags)' },
     { id: 'tagCircle49h12', label: 'tagCircle49h12 (65535 tags)' },
-    { id: 'tagCustom48h12', label: 'tagCustom48h12 (42211 tags)' }
+    { id: 'tagCustom48h12', label: 'tagCustom48h12 (42211 tags)' },
   ];
 
   render() {
-    const currentFamilyData = this.families.find(f => f.id === this.currentFamily);
+    const currentFamilyData = this.families.find(
+      (f) => f.id === this.currentFamily
+    );
     const currentLabel = currentFamilyData?.id || this.currentFamily;
-    
+
     return html`
-      <div class="dropdown ${this.showMenu ? 'active' : ''}" @click=${this.toggleMenu}>
+      <div
+        class="dropdown ${this.showMenu ? 'active' : ''}"
+        @click=${this.toggleMenu}
+      >
         <span class="dropdown-label">${currentLabel}</span>
         <span class="dropdown-arrow">▼</span>
       </div>
       <div class="dropdown-menu ${this.showMenu ? 'active' : ''}">
-        ${this.families.map(family => html`
-          <div 
-            class="menu-item ${this.currentFamily === family.id ? 'selected' : ''}"
-            @click=${(e: Event) => {
-              e.stopPropagation();
-              this.selectFamily(family.id);
-            }}
-          >
-            ${family.label}
-          </div>
-        `)}
+        ${this.families.map(
+          (family) => html`
+            <div
+              class="menu-item ${this.currentFamily === family.id
+                ? 'selected'
+                : ''}"
+              @click=${(e: Event) => {
+                e.stopPropagation();
+                this.selectFamily(family.id);
+              }}
+            >
+              ${family.label}
+            </div>
+          `
+        )}
       </div>
     `;
   }
@@ -174,11 +183,13 @@ export class FamilySelector extends LitElement {
 
   private selectFamily(familyId: string) {
     if (familyId !== this.currentFamily) {
-      this.dispatchEvent(new CustomEvent('family-selected', {
-        detail: { familyId },
-        bubbles: true,
-        composed: true
-      }));
+      this.dispatchEvent(
+        new CustomEvent('family-selected', {
+          detail: { familyId },
+          bubbles: true,
+          composed: true,
+        })
+      );
     }
     this.showMenu = false;
   }

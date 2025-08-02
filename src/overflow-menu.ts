@@ -1,8 +1,8 @@
-import { LitElement, html, css } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
-import { AppMode } from "./app-state";
+import { LitElement, html, css } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
+import { AppMode } from './app-state';
 
-@customElement("overflow-menu")
+@customElement('overflow-menu')
 export class OverflowMenu extends LitElement {
   @property({ type: Boolean }) recordMode = false;
   @property({ type: String }) appMode: AppMode = AppMode.LIVE;
@@ -58,7 +58,8 @@ export class OverflowMenu extends LitElement {
       padding: 4px;
       z-index: 1001;
       display: none;
-      box-shadow: 0 4px 20px rgba(0, 128, 255, 0.4),
+      box-shadow:
+        0 4px 20px rgba(0, 128, 255, 0.4),
         inset 0 0 20px rgba(0, 128, 255, 0.1);
       min-width: 160px;
       width: max-content;
@@ -74,7 +75,7 @@ export class OverflowMenu extends LitElement {
       transition: all 0.3s ease;
       border-radius: 4px;
       font-size: 14px;
-      font-family: "Courier New", monospace;
+      font-family: 'Courier New', monospace;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -107,7 +108,7 @@ export class OverflowMenu extends LitElement {
     }
 
     .toggle-switch::after {
-      content: "";
+      content: '';
       position: absolute;
       width: 14px;
       height: 14px;
@@ -147,10 +148,10 @@ export class OverflowMenu extends LitElement {
 
   render() {
     const isRecordModeDisabled = this.isRecordModeDisabled();
-    
+
     return html`
       <button
-        class="menu-button ${this.showMenu ? "active" : ""}"
+        class="menu-button ${this.showMenu ? 'active' : ''}"
         @click=${this.toggleMenu}
       >
         <svg viewBox="0 0 24 24">
@@ -159,13 +160,20 @@ export class OverflowMenu extends LitElement {
           <circle cx="12" cy="19" r="1.5" />
         </svg>
       </button>
-      <div class="dropdown-menu ${this.showMenu ? "active" : ""}">
-        <div class="menu-item ${isRecordModeDisabled ? "disabled" : ""}" @click=${this.handleMenuItemClick}>
+      <div class="dropdown-menu ${this.showMenu ? 'active' : ''}">
+        <div
+          class="menu-item ${isRecordModeDisabled ? 'disabled' : ''}"
+          @click=${this.handleMenuItemClick}
+        >
           <span>Record Mode</span>
           <div
-            class="toggle-switch ${this.recordMode ? "active" : ""} ${isRecordModeDisabled ? "disabled" : ""}"
+            class="toggle-switch ${this.recordMode
+              ? 'active'
+              : ''} ${isRecordModeDisabled ? 'disabled' : ''}"
             @click=${this.handleToggleClick}
-            title="${isRecordModeDisabled ? "Record mode is disabled while viewing frozen video or images" : ""}"
+            title="${isRecordModeDisabled
+              ? 'Record mode is disabled while viewing frozen video or images'
+              : ''}"
           ></div>
         </div>
         <div class="menu-item" @click=${this.handleSelectImage}>
@@ -177,12 +185,12 @@ export class OverflowMenu extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    document.addEventListener("click", this.handleDocumentClick);
+    document.addEventListener('click', this.handleDocumentClick);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    document.removeEventListener("click", this.handleDocumentClick);
+    document.removeEventListener('click', this.handleDocumentClick);
   }
 
   private handleDocumentClick = (e: Event) => {
@@ -202,19 +210,21 @@ export class OverflowMenu extends LitElement {
   }
 
   private isRecordModeDisabled(): boolean {
-    return this.appMode === AppMode.PAUSED || this.appMode === AppMode.IMAGE_MODE;
+    return (
+      this.appMode === AppMode.PAUSED || this.appMode === AppMode.IMAGE_MODE
+    );
   }
 
   private handleToggleClick(e: Event) {
     e.stopPropagation();
-    
+
     if (this.isRecordModeDisabled()) {
       return;
     }
-    
+
     this.recordMode = !this.recordMode;
     this.dispatchEvent(
-      new CustomEvent("record-mode-changed", {
+      new CustomEvent('record-mode-changed', {
         detail: { recordMode: this.recordMode },
         bubbles: true,
         composed: true,
@@ -226,16 +236,16 @@ export class OverflowMenu extends LitElement {
     e.stopPropagation();
     this.showMenu = false;
 
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    input.style.display = "none";
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.display = 'none';
 
-    input.addEventListener("change", (event) => {
+    input.addEventListener('change', (event) => {
       const file = (event.target as HTMLInputElement).files?.[0];
       if (file) {
         this.dispatchEvent(
-          new CustomEvent("image-selected", {
+          new CustomEvent('image-selected', {
             detail: { file },
             bubbles: true,
             composed: true,

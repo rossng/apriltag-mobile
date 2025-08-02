@@ -60,14 +60,14 @@ export class RecordedTags extends LitElement {
       white-space: nowrap;
       color: var(--neon-green);
       text-shadow: 0 0 8px var(--neon-green);
-      box-shadow: 
+      box-shadow:
         0 0 15px rgba(0, 255, 128, 0.3),
         inset 0 0 10px rgba(0, 255, 128, 0.1);
       transition: all 0.3s ease;
     }
 
     .tag-item:hover {
-      box-shadow: 
+      box-shadow:
         0 0 25px rgba(0, 255, 128, 0.5),
         inset 0 0 15px rgba(0, 255, 128, 0.2);
     }
@@ -77,13 +77,13 @@ export class RecordedTags extends LitElement {
       border-color: var(--neon-blue);
       color: var(--neon-blue);
       text-shadow: 0 0 8px var(--neon-blue);
-      box-shadow: 
+      box-shadow:
         0 0 15px rgba(0, 128, 255, 0.3),
         inset 0 0 10px rgba(0, 128, 255, 0.1);
     }
 
     .tag-item.range:hover {
-      box-shadow: 
+      box-shadow:
         0 0 25px rgba(0, 128, 255, 0.5),
         inset 0 0 15px rgba(0, 128, 255, 0.2);
     }
@@ -127,72 +127,82 @@ export class RecordedTags extends LitElement {
 
   render() {
     const compressedTags = this.compressTagIds(this.tagIds);
-    
+
     return html`
       <button class="close-button" @click=${this.close}>×</button>
-      
+
       <div class="header">
         <h2>Recorded Tags</h2>
-        ${this.tagIds.length > 0 ? html`<div class="count">${this.tagIds.length} unique tag${this.tagIds.length === 1 ? '' : 's'} detected</div>` : ''}
+        ${this.tagIds.length > 0
+          ? html`<div class="count">
+              ${this.tagIds.length} unique
+              tag${this.tagIds.length === 1 ? '' : 's'} detected
+            </div>`
+          : ''}
       </div>
 
-      ${this.tagIds.length === 0 
+      ${this.tagIds.length === 0
         ? html`<div class="empty-state">No tags detected during recording</div>`
         : html`
-          <div class="tags-container">
-            ${compressedTags.map(item => html`
-              <div class="tag-item ${item.isRange ? 'range' : ''}">
-                ${item.display}
-              </div>
-            `)}
-          </div>
-        `
-      }
+            <div class="tags-container">
+              ${compressedTags.map(
+                (item) => html`
+                  <div class="tag-item ${item.isRange ? 'range' : ''}">
+                    ${item.display}
+                  </div>
+                `
+              )}
+            </div>
+          `}
     `;
   }
 
-  private compressTagIds(tagIds: number[]): Array<{display: string, isRange: boolean}> {
+  private compressTagIds(
+    tagIds: number[]
+  ): Array<{ display: string; isRange: boolean }> {
     if (tagIds.length === 0) return [];
-    
+
     const sorted = [...new Set(tagIds)].sort((a, b) => a - b);
-    const compressed: Array<{display: string, isRange: boolean}> = [];
-    
+    const compressed: Array<{ display: string; isRange: boolean }> = [];
+
     let start = sorted[0];
     let end = sorted[0];
-    
+
     for (let i = 1; i < sorted.length; i++) {
       if (sorted[i] === end + 1) {
         end = sorted[i];
       } else {
         if (start === end) {
-          compressed.push({display: start.toString(), isRange: false});
+          compressed.push({ display: start.toString(), isRange: false });
         } else if (end === start + 1) {
-          compressed.push({display: start.toString(), isRange: false});
-          compressed.push({display: end.toString(), isRange: false});
+          compressed.push({ display: start.toString(), isRange: false });
+          compressed.push({ display: end.toString(), isRange: false });
         } else {
-          compressed.push({display: `${start}-${end}`, isRange: true});
+          compressed.push({ display: `${start}-${end}`, isRange: true });
         }
         start = sorted[i];
         end = sorted[i];
       }
     }
-    
+
     if (start === end) {
-      compressed.push({display: start.toString(), isRange: false});
+      compressed.push({ display: start.toString(), isRange: false });
     } else if (end === start + 1) {
-      compressed.push({display: start.toString(), isRange: false});
-      compressed.push({display: end.toString(), isRange: false});
+      compressed.push({ display: start.toString(), isRange: false });
+      compressed.push({ display: end.toString(), isRange: false });
     } else {
-      compressed.push({display: `${start}-${end}`, isRange: true});
+      compressed.push({ display: `${start}-${end}`, isRange: true });
     }
-    
+
     return compressed;
   }
 
   private close() {
-    this.dispatchEvent(new CustomEvent('close', {
-      bubbles: true,
-      composed: true
-    }));
+    this.dispatchEvent(
+      new CustomEvent('close', {
+        bubbles: true,
+        composed: true,
+      })
+    );
   }
 }

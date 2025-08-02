@@ -9,9 +9,9 @@ export class DetectionController implements ReactiveController {
     detections: [],
     frozenFrame: null,
     selectedImage: null,
-    isProcessing: false
+    isProcessing: false,
   };
-  
+
   private animationFrameId: number | null = null;
   private video: HTMLVideoElement | null = null;
   private hiddenCanvas: HTMLCanvasElement;
@@ -22,7 +22,7 @@ export class DetectionController implements ReactiveController {
     this.host = host;
     this.detector = detector;
     this.host.addController(this);
-    
+
     // Create hidden canvas for frame capture
     this.hiddenCanvas = document.createElement('canvas');
     this.hiddenCtx = this.hiddenCanvas.getContext('2d')!;
@@ -63,7 +63,7 @@ export class DetectionController implements ReactiveController {
   setMode(mode: AppMode): void {
     const oldMode = this.currentMode;
     this.currentMode = mode;
-    
+
     if (mode === AppMode.LIVE && oldMode !== AppMode.LIVE) {
       this.resumeLiveDetection();
     } else if (mode !== AppMode.LIVE && oldMode === AppMode.LIVE) {
@@ -91,13 +91,13 @@ export class DetectionController implements ReactiveController {
     const frozenFrame = this.captureCurrentFrame();
     if (frozenFrame) {
       const detections = await this.detectInFrame(frozenFrame);
-      
+
       this._state = {
         ...this._state,
         frozenFrame,
-        detections
+        detections,
       };
-      
+
       this.host.requestUpdate();
       this.stopContinuousDetection();
     }
@@ -105,24 +105,24 @@ export class DetectionController implements ReactiveController {
 
   async loadImageFile(file: File): Promise<void> {
     try {
-      this.dispatchEvent('status-update', { message: "Loading image..." });
-      
+      this.dispatchEvent('status-update', { message: 'Loading image...' });
+
       const selectedImage = await this.loadImageAsImageData(file);
       const detections = await this.detectInFrame(selectedImage);
-      
+
       this._state = {
         ...this._state,
         selectedImage,
         detections,
-        frozenFrame: null
+        frozenFrame: null,
       };
-      
+
       this.host.requestUpdate();
       this.stopContinuousDetection();
       this.dispatchEvent('status-clear');
     } catch (error) {
-      console.error("Error loading image:", error);
-      this.dispatchEvent('status-update', { message: "Failed to load image" });
+      console.error('Error loading image:', error);
+      this.dispatchEvent('status-update', { message: 'Failed to load image' });
     }
   }
 
@@ -131,15 +131,18 @@ export class DetectionController implements ReactiveController {
       ...this._state,
       frozenFrame: null,
       selectedImage: null,
-      detections: []
+      detections: [],
     };
-    
+
     this.host.requestUpdate();
     this.startContinuousDetection();
   }
 
   private runDetectionLoop(): void {
-    if (this.currentMode !== AppMode.LIVE && this.currentMode !== AppMode.RECORDING) {
+    if (
+      this.currentMode !== AppMode.LIVE &&
+      this.currentMode !== AppMode.RECORDING
+    ) {
       return;
     }
 
@@ -150,7 +153,11 @@ export class DetectionController implements ReactiveController {
   }
 
   private async processCurrentFrame(): Promise<void> {
-    if (this._state.isProcessing || !this.detector?.isReady() || !this.video?.videoWidth) {
+    if (
+      this._state.isProcessing ||
+      !this.detector?.isReady() ||
+      !this.video?.videoWidth
+    ) {
       return;
     }
 
@@ -161,18 +168,18 @@ export class DetectionController implements ReactiveController {
       const imageData = this.captureCurrentFrame();
       if (imageData) {
         const detections = await this.detectInFrame(imageData);
-        
+
         this._state = {
           ...this._state,
           detections,
-          isProcessing: false
+          isProcessing: false,
         };
-        
+
         this.host.requestUpdate();
         this.dispatchEvent('detections-updated', { detections });
       }
     } catch (error) {
-      console.error("Error processing frame:", error);
+      console.error('Error processing frame:', error);
       this._state = { ...this._state, isProcessing: false };
       this.host.requestUpdate();
     }
@@ -201,36 +208,38 @@ export class DetectionController implements ReactiveController {
   private loadImageAsImageData(file: File): Promise<ImageData> {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      
+
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d')!;
-        
+
         canvas.width = img.width;
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
-        
+
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         URL.revokeObjectURL(img.src);
         resolve(imageData);
       };
-      
+
       img.onerror = () => {
         URL.revokeObjectURL(img.src);
         reject(new Error('Failed to load image'));
       };
-      
+
       img.src = URL.createObjectURL(file);
     });
   }
 
   private dispatchEvent(type: string, detail?: any): void {
     if (this.host instanceof EventTarget) {
-      this.host.dispatchEvent(new CustomEvent(type, { 
-        detail,
-        bubbles: true,
-        composed: true 
-      }));
+      this.host.dispatchEvent(
+        new CustomEvent(type, {
+          detail,
+          bubbles: true,
+          composed: true,
+        })
+      );
     }
   }
 }
