@@ -245,6 +245,7 @@ export class AprilTagApp extends LitElement {
           ></family-selector>
           <overflow-menu
             .recordMode=${this.recordMode}
+            .appMode=${this.appMode}
             @record-mode-changed=${this.handleRecordModeChanged}
             @image-selected=${this.handleImageSelected}
           ></overflow-menu>
@@ -437,6 +438,14 @@ export class AprilTagApp extends LitElement {
     if (!isValidModeTransition(this.appMode, newMode)) {
       console.warn(`Invalid mode transition from ${this.appMode} to ${newMode}`);
       return;
+    }
+    
+    // Turn off record mode when entering paused or image modes to prevent bugs
+    if ((newMode === AppMode.PAUSED || newMode === AppMode.IMAGE_MODE) && this.recordMode) {
+      this.recordMode = false;
+      if (this.recordingController?.isActive) {
+        this.recordingController.stopRecording();
+      }
     }
     
     this.appMode = newMode;
