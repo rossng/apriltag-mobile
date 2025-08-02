@@ -4,9 +4,9 @@ import { StatusState } from '../app-state';
 export class StatusController implements ReactiveController {
   private host: ReactiveControllerHost;
   private _state: StatusState = {
-    message: null
+    message: null,
   };
-  
+
   private fadeOutTimer: number | null = null;
 
   constructor(host: ReactiveControllerHost) {
@@ -42,14 +42,14 @@ export class StatusController implements ReactiveController {
     }
 
     const fadeOutTime = fadeOutAfter ? Date.now() + fadeOutAfter : undefined;
-    
+
     this._state = {
       message,
-      fadeOutTime
+      fadeOutTime,
     };
-    
+
     this.host.requestUpdate();
-    
+
     if (fadeOutAfter) {
       this.fadeOutTimer = window.setTimeout(() => {
         // Only clear if this is still the same message
@@ -65,11 +65,11 @@ export class StatusController implements ReactiveController {
       clearTimeout(this.fadeOutTimer);
       this.fadeOutTimer = null;
     }
-    
+
     this._state = {
-      message: null
+      message: null,
     };
-    
+
     this.host.requestUpdate();
   }
 

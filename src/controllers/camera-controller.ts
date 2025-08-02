@@ -6,7 +6,7 @@ export class CameraController implements ReactiveController {
   private _state: CameraState = {
     isReady: false,
     stream: null,
-    dimensions: { width: 0, height: 0 }
+    dimensions: { width: 0, height: 0 },
   };
 
   constructor(host: ReactiveControllerHost) {
@@ -40,41 +40,45 @@ export class CameraController implements ReactiveController {
 
   async initialize(): Promise<void> {
     try {
-      this.updateStatus("Requesting camera permission...");
+      this.updateStatus('Requesting camera permission...');
 
       const constraints: MediaStreamConstraints = {
         video: {
-          facingMode: { ideal: "environment" },
+          facingMode: { ideal: 'environment' },
           width: { ideal: 1280 },
           height: { ideal: 720 },
         },
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      
+
       this._state = {
         ...this._state,
         stream,
-        isReady: true
+        isReady: true,
       };
-      
+
       this.host.requestUpdate();
       console.log('Camera ready, dispatching event with stream:', stream);
       this.dispatchEvent('camera-ready', { stream });
     } catch (error) {
-      console.error("Error accessing camera:", error);
-      this.dispatchEvent('camera-error', { 
+      console.error('Error accessing camera:', error);
+      this.dispatchEvent('camera-error', {
         error,
-        message: "Camera access denied. Please allow camera permissions and refresh."
+        message:
+          'Camera access denied. Please allow camera permissions and refresh.',
       });
     }
   }
 
   updateDimensions(width: number, height: number): void {
-    if (this._state.dimensions.width !== width || this._state.dimensions.height !== height) {
+    if (
+      this._state.dimensions.width !== width ||
+      this._state.dimensions.height !== height
+    ) {
       this._state = {
         ...this._state,
-        dimensions: { width, height }
+        dimensions: { width, height },
       };
       this.host.requestUpdate();
       this.dispatchEvent('dimensions-changed', { width, height });
@@ -83,11 +87,11 @@ export class CameraController implements ReactiveController {
 
   cleanup(): void {
     if (this._state.stream) {
-      this._state.stream.getTracks().forEach(track => track.stop());
+      this._state.stream.getTracks().forEach((track) => track.stop());
       this._state = {
         ...this._state,
         stream: null,
-        isReady: false
+        isReady: false,
       };
       this.host.requestUpdate();
     }
@@ -99,11 +103,13 @@ export class CameraController implements ReactiveController {
 
   private dispatchEvent(type: string, detail: any): void {
     if (this.host instanceof EventTarget) {
-      this.host.dispatchEvent(new CustomEvent(type, { 
-        detail,
-        bubbles: true,
-        composed: true 
-      }));
+      this.host.dispatchEvent(
+        new CustomEvent(type, {
+          detail,
+          bubbles: true,
+          composed: true,
+        })
+      );
     }
   }
 }
