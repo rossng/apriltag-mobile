@@ -34,13 +34,13 @@ export class Detections extends LitElement {
     }
 
     canvas.fill-mode {
-      object-fit: fill;
+      object-fit: contain;
     }
   `;
 
   render() {
     return html`
-      <canvas class="cover-mode"></canvas>
+      <canvas class="fill-mode"></canvas>
     `;
   }
 
