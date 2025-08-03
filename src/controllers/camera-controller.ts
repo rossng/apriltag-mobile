@@ -154,7 +154,7 @@ export class CameraController implements ReactiveController {
 
       this.host.requestUpdate();
       this.dispatchEvent('camera-ready', { stream });
-      this.dispatchEvent('status-clear');
+      this.dispatchEvent('status-clear', {});
     } catch (error) {
       console.error('Error switching camera:', error);
       this.dispatchEvent('camera-error', {

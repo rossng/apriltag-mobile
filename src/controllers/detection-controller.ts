@@ -11,6 +11,9 @@ export class DetectionController implements ReactiveController {
     selectedImage: null,
     isProcessing: false,
   };
+  
+  private _currentFamily: string;
+  private _previousFamily: string | undefined;
 
   private animationFrameId: number | null = null;
   private video: HTMLVideoElement | null = null;
@@ -18,10 +21,14 @@ export class DetectionController implements ReactiveController {
   private hiddenCtx: CanvasRenderingContext2D;
   private currentMode: AppMode = AppMode.LIVE;
 
-  constructor(host: ReactiveControllerHost, detector: AprilTagDetector) {
+  constructor(host: ReactiveControllerHost, detector: AprilTagDetector, initialFamily = 'tag36h11') {
     this.host = host;
     this.detector = detector;
+    this._currentFamily = initialFamily;
     this.host.addController(this);
+
+    // Set the initial family on the detector
+    this.detector.setFamily(initialFamily);
 
     // Create hidden canvas for frame capture
     this.hiddenCanvas = document.createElement('canvas');
@@ -36,8 +43,28 @@ export class DetectionController implements ReactiveController {
     this.stopContinuousDetection();
   }
 
+  hostUpdate(): void {
+    // Called before host's update()
+    if (this._previousFamily !== undefined && this._previousFamily !== this._currentFamily) {
+      // Family has changed, handle it reactively
+      this.handleFamilyChange();
+    }
+    this._previousFamily = this._currentFamily;
+  }
+
   get state(): DetectionState {
     return this._state;
+  }
+
+  get family(): string {
+    return this._currentFamily;
+  }
+
+  set family(newFamily: string) {
+    if (this._currentFamily !== newFamily) {
+      this._currentFamily = newFamily;
+      this.host.requestUpdate();
+    }
   }
 
   get detections(): Detection[] {
@@ -139,13 +166,14 @@ export class DetectionController implements ReactiveController {
   }
 
   async redetectInFrozenFrame(): Promise<void> {
-    if (!this._state.frozenFrame) return;
+    const frozenFrame = this._state.frozenFrame;
+    if (!frozenFrame) return;
     
     try {
       this._state = { ...this._state, isProcessing: true };
       this.host.requestUpdate();
       
-      const detections = await this.detectInFrame(this._state.frozenFrame);
+      const detections = await this.detectInFrame(frozenFrame);
       
       this._state = {
         ...this._state,
@@ -162,13 +190,14 @@ export class DetectionController implements ReactiveController {
   }
 
   async redetectInSelectedImage(): Promise<void> {
-    if (!this._state.selectedImage) return;
+    const selectedImage = this._state.selectedImage;
+    if (!selectedImage) return;
     
     try {
       this._state = { ...this._state, isProcessing: true };
       this.host.requestUpdate();
       
-      const detections = await this.detectInFrame(this._state.selectedImage);
+      const detections = await this.detectInFrame(selectedImage);
       
       this._state = {
         ...this._state,
@@ -182,6 +211,28 @@ export class DetectionController implements ReactiveController {
       this._state = { ...this._state, isProcessing: false };
       this.host.requestUpdate();
     }
+  }
+
+  private async handleFamilyChange(): Promise<void> {
+    // Update the detector with the new family
+    const success = this.detector.setFamily(this._currentFamily);
+    
+    if (!success) {
+      console.error(`Failed to switch to family: ${this._currentFamily}`);
+      // Revert to previous family
+      this._currentFamily = this._previousFamily!;
+      return;
+    }
+
+    // Automatically re-run detections based on current mode
+    if (this.currentMode === AppMode.PAUSED && this._state.frozenFrame) {
+      // Re-detect in frozen frame
+      await this.redetectInFrozenFrame();
+    } else if (this.currentMode === AppMode.IMAGE_MODE && this._state.selectedImage) {
+      // Re-detect in selected image
+      await this.redetectInSelectedImage();
+    }
+    // Note: Live mode will automatically use the new family in the next detection loop iteration
   }
 
   private runDetectionLoop(): void {

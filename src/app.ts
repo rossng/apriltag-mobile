@@ -385,11 +385,10 @@ export class AprilTagApp extends LitElement {
 
   async init(): Promise<void> {
     this.detector.init();
-    this.detector.setFamily(this.currentFamily);
 
     // Create all controllers after element is connected
     this.cameraController = new CameraController(this);
-    this.detectionController = new DetectionController(this, this.detector);
+    this.detectionController = new DetectionController(this, this.detector, this.currentFamily);
     this.recordingController = new RecordingController(this);
     this.statusController = new StatusController(this);
 
@@ -473,7 +472,16 @@ export class AprilTagApp extends LitElement {
 
   handleFamilySelected(e: CustomEvent): void {
     const { familyId } = e.detail;
-    this.switchFamily(familyId);
+    
+    // Update the detection controller's family property
+    if (this.detectionController) {
+      this.detectionController.family = familyId;
+      
+      // Update our local state and persist
+      this.currentFamily = familyId;
+      localStorage.setItem('selectedFamily', familyId);
+      this.statusController?.setTemporaryMessage(`Switched to ${familyId}`, 3000);
+    }
   }
 
   handleRecordModeChanged(e: CustomEvent): void {
@@ -489,8 +497,11 @@ export class AprilTagApp extends LitElement {
     const { file, familyId } = e.detail;
     
     // Switch family if specified (for example image)
-    if (familyId) {
-      this.switchFamily(familyId);
+    if (familyId && this.detectionController) {
+      this.detectionController.family = familyId;
+      this.currentFamily = familyId;
+      localStorage.setItem('selectedFamily', familyId);
+      this.statusController?.setTemporaryMessage(`Switched to ${familyId}`, 3000);
     }
     
     this.detectionController?.loadImageFile(file);
@@ -531,33 +542,6 @@ export class AprilTagApp extends LitElement {
     }
   }
 
-  switchFamily(family: string): void {
-    const success = this.detector.setFamily(family);
-
-    if (success) {
-      this.currentFamily = family;
-      localStorage.setItem('selectedFamily', family);
-      this.statusController?.setTemporaryMessage(`Switched to ${family}`, 3000);
-      
-      // Re-run detections if viewing frozen frame or image
-      if (this.appMode === AppMode.PAUSED || this.appMode === AppMode.IMAGE_MODE) {
-        this.rerunDetections();
-      }
-    } else {
-      this.statusController?.setMessage(`Failed to switch to ${family}`);
-    }
-  }
-
-  async rerunDetections(): Promise<void> {
-    if (!this.detectionController) return;
-    
-    // Re-run detections on current frozen frame or image
-    if (this.appMode === AppMode.PAUSED && this.detectionController.frozenFrame) {
-      await this.detectionController.redetectInFrozenFrame();
-    } else if (this.appMode === AppMode.IMAGE_MODE && this.detectionController.selectedImage) {
-      await this.detectionController.redetectInSelectedImage();
-    }
-  }
 
   setAppMode(newMode: AppMode): void {
     // Skip if already in the same mode
