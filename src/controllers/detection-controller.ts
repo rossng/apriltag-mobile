@@ -138,6 +138,52 @@ export class DetectionController implements ReactiveController {
     this.startContinuousDetection();
   }
 
+  async redetectInFrozenFrame(): Promise<void> {
+    if (!this._state.frozenFrame) return;
+    
+    try {
+      this._state = { ...this._state, isProcessing: true };
+      this.host.requestUpdate();
+      
+      const detections = await this.detectInFrame(this._state.frozenFrame);
+      
+      this._state = {
+        ...this._state,
+        detections,
+        isProcessing: false,
+      };
+      
+      this.host.requestUpdate();
+    } catch (error) {
+      console.error('Error re-detecting in frozen frame:', error);
+      this._state = { ...this._state, isProcessing: false };
+      this.host.requestUpdate();
+    }
+  }
+
+  async redetectInSelectedImage(): Promise<void> {
+    if (!this._state.selectedImage) return;
+    
+    try {
+      this._state = { ...this._state, isProcessing: true };
+      this.host.requestUpdate();
+      
+      const detections = await this.detectInFrame(this._state.selectedImage);
+      
+      this._state = {
+        ...this._state,
+        detections,
+        isProcessing: false,
+      };
+      
+      this.host.requestUpdate();
+    } catch (error) {
+      console.error('Error re-detecting in selected image:', error);
+      this._state = { ...this._state, isProcessing: false };
+      this.host.requestUpdate();
+    }
+  }
+
   private runDetectionLoop(): void {
     if (
       this.currentMode !== AppMode.LIVE &&

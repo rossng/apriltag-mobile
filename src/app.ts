@@ -537,8 +537,24 @@ export class AprilTagApp extends LitElement {
       this.currentFamily = family;
       localStorage.setItem('selectedFamily', family);
       this.statusController?.setTemporaryMessage(`Switched to ${family}`, 3000);
+      
+      // Re-run detections if viewing frozen frame or image
+      if (this.appMode === AppMode.PAUSED || this.appMode === AppMode.IMAGE_MODE) {
+        this.rerunDetections();
+      }
     } else {
       this.statusController?.setMessage(`Failed to switch to ${family}`);
+    }
+  }
+
+  async rerunDetections(): Promise<void> {
+    if (!this.detectionController) return;
+    
+    // Re-run detections on current frozen frame or image
+    if (this.appMode === AppMode.PAUSED && this.detectionController.frozenFrame) {
+      await this.detectionController.redetectInFrozenFrame();
+    } else if (this.appMode === AppMode.IMAGE_MODE && this.detectionController.selectedImage) {
+      await this.detectionController.redetectInSelectedImage();
     }
   }
 
