@@ -244,6 +244,13 @@ export class OverflowMenu extends LitElement {
         >
           <span>View Example</span>
         </div>
+        <div 
+          class="menu-item" 
+          @click=${this.handleWhatAreAprilTags}
+          title="Learn about AprilTags"
+        >
+          <span>What are AprilTags?</span>
+        </div>
       </div>
     `;
   }
@@ -392,5 +399,11 @@ export class OverflowMenu extends LitElement {
     } catch (error) {
       console.error('Error loading sample image:', error);
     }
+  }
+
+  private handleWhatAreAprilTags(e: Event) {
+    e.stopPropagation();
+    this.showMenu = false;
+    window.open('https://docs.wpilib.org/en/stable/docs/software/vision-processing/apriltag/apriltag-intro.html', '_blank');
   }
 }
