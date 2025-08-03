@@ -185,6 +185,7 @@ export class OverflowMenu extends LitElement {
   render() {
     const isRecordModeDisabled = this.isRecordModeDisabled();
     const isCameraSwitchEnabled = this.isCameraSwitchEnabled();
+    const isImageSelectionDisabled = this.appMode === AppMode.RECORDING || this.appMode === AppMode.VIEWING_RECORDED;
 
     return html`
       <button
@@ -229,10 +230,18 @@ export class OverflowMenu extends LitElement {
               </div>
             `
           : ''}
-        <div class="menu-item" @click=${this.handleSelectImage}>
+        <div 
+          class="menu-item ${isImageSelectionDisabled ? 'disabled' : ''}" 
+          @click=${isImageSelectionDisabled ? undefined : this.handleSelectImage}
+          title="${isImageSelectionDisabled ? 'Image selection disabled during recording/playback' : 'Select an image file'}"
+        >
           <span>Select Image</span>
         </div>
-        <div class="menu-item" @click=${this.handleViewExample}>
+        <div 
+          class="menu-item ${isImageSelectionDisabled ? 'disabled' : ''}" 
+          @click=${isImageSelectionDisabled ? undefined : this.handleViewExample}
+          title="${isImageSelectionDisabled ? 'View example disabled during recording/playback' : 'View example AprilTag image'}"
+        >
           <span>View Example</span>
         </div>
       </div>
@@ -319,6 +328,12 @@ export class OverflowMenu extends LitElement {
 
   private handleSelectImage(e: Event) {
     e.stopPropagation();
+    
+    // Prevent image selection during recording or viewing recorded
+    if (this.appMode === AppMode.RECORDING || this.appMode === AppMode.VIEWING_RECORDED) {
+      return;
+    }
+    
     this.showMenu = false;
 
     const input = document.createElement('input');
@@ -346,6 +361,12 @@ export class OverflowMenu extends LitElement {
 
   private async handleViewExample(e: Event) {
     e.stopPropagation();
+    
+    // Prevent view example during recording or viewing recorded
+    if (this.appMode === AppMode.RECORDING || this.appMode === AppMode.VIEWING_RECORDED) {
+      return;
+    }
+    
     this.showMenu = false;
 
     try {
