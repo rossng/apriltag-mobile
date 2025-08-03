@@ -306,8 +306,11 @@ export class AprilTagApp extends LitElement {
           <overflow-menu
             .recordMode=${this.recordMode}
             .appMode=${this.appMode}
+            .availableCameras=${this.cameraController?.availableCameras || []}
+            .currentCameraId=${this.cameraController?.currentCameraId}
             @record-mode-changed=${this.handleRecordModeChanged}
             @image-selected=${this.handleImageSelected}
+            @camera-switch-requested=${this.handleCameraSwitchRequested}
           ></overflow-menu>
         </div>
       </div>
@@ -491,6 +494,13 @@ export class AprilTagApp extends LitElement {
 
   handleAboutClick(): void {
     window.open('https://github.com/rossng/apriltag-mobile', '_blank');
+  }
+
+  handleCameraSwitchRequested(e: CustomEvent): void {
+    const { deviceId } = e.detail;
+    if (this.cameraController) {
+      this.cameraController.switchCamera(deviceId);
+    }
   }
 
   handleToggleDetection(): void {

@@ -8,6 +8,8 @@ export class CameraController implements ReactiveController {
     stream: null,
     dimensions: { width: 0, height: 0 },
   };
+  private availableDevices: MediaDeviceInfo[] = [];
+  private currentDeviceId: string | null = null;
 
   constructor(host: ReactiveControllerHost) {
     this.host = host;
@@ -38,9 +40,24 @@ export class CameraController implements ReactiveController {
     return this._state.dimensions;
   }
 
+  get availableCameras(): MediaDeviceInfo[] {
+    return this.availableDevices;
+  }
+
+  get currentCameraId(): string | null {
+    return this.currentDeviceId;
+  }
+
+  get hasMultipleCameras(): boolean {
+    return this.availableDevices.length > 1;
+  }
+
   async initialize(): Promise<void> {
     try {
       this.updateStatus('Requesting camera permission...');
+
+      // First, enumerate available cameras
+      await this.enumerateDevices();
 
       const constraints: MediaStreamConstraints = {
         video: {
@@ -51,6 +68,12 @@ export class CameraController implements ReactiveController {
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      
+      // Store the current device ID
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack) {
+        this.currentDeviceId = videoTrack.getSettings().deviceId || null;
+      }
 
       this._state = {
         ...this._state,
@@ -82,6 +105,59 @@ export class CameraController implements ReactiveController {
       };
       this.host.requestUpdate();
       this.dispatchEvent('dimensions-changed', { width, height });
+    }
+  }
+
+  async enumerateDevices(): Promise<void> {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      this.availableDevices = devices.filter(device => device.kind === 'videoinput');
+      console.log('Available video devices:', this.availableDevices);
+    } catch (error) {
+      console.error('Error enumerating devices:', error);
+      this.availableDevices = [];
+    }
+  }
+
+  async switchCamera(deviceId: string): Promise<void> {
+    if (!this.availableDevices.find(device => device.deviceId === deviceId)) {
+      throw new Error('Invalid device ID');
+    }
+
+    try {
+      this.updateStatus('Switching camera...');
+      
+      // Stop current stream
+      if (this._state.stream) {
+        this._state.stream.getTracks().forEach((track) => track.stop());
+      }
+
+      const constraints: MediaStreamConstraints = {
+        video: {
+          deviceId: { exact: deviceId },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      this.currentDeviceId = deviceId;
+
+      this._state = {
+        ...this._state,
+        stream,
+        isReady: true,
+      };
+
+      this.host.requestUpdate();
+      this.dispatchEvent('camera-ready', { stream });
+      this.dispatchEvent('status-clear');
+    } catch (error) {
+      console.error('Error switching camera:', error);
+      this.dispatchEvent('camera-error', {
+        error,
+        message: 'Failed to switch camera. Please try again.',
+      });
     }
   }
 

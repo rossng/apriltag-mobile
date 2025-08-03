@@ -6,6 +6,8 @@ import { AppMode } from './app-state';
 export class OverflowMenu extends LitElement {
   @property({ type: Boolean }) recordMode = false;
   @property({ type: String }) appMode: AppMode = AppMode.LIVE;
+  @property({ type: Array }) availableCameras: MediaDeviceInfo[] = [];
+  @property({ type: String }) currentCameraId: string | null = null;
   @state() private showMenu = false;
 
   static styles = css`
@@ -182,6 +184,7 @@ export class OverflowMenu extends LitElement {
 
   render() {
     const isRecordModeDisabled = this.isRecordModeDisabled();
+    const isCameraSwitchEnabled = this.isCameraSwitchEnabled();
 
     return html`
       <button
@@ -210,6 +213,22 @@ export class OverflowMenu extends LitElement {
               : ''}"
           ></div>
         </div>
+        ${this.availableCameras.length > 1
+          ? html`
+              <div 
+                class="menu-item ${!isCameraSwitchEnabled ? 'disabled' : ''}" 
+                @click=${this.handleSwitchCamera}
+                title="${!isCameraSwitchEnabled 
+                  ? 'Camera switching is only available in live mode' 
+                  : 'Switch camera'}"
+              >
+                <span>Switch Camera</span>
+                <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor;">
+                  <path d="M20 4h-3.17L15 2H9L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm3-4.5h-2v2l-3-3 3-3v2h2v2z"/>
+                </svg>
+              </div>
+            `
+          : ''}
         <div class="menu-item" @click=${this.handleSelectImage}>
           <span>Select Image</span>
         </div>
@@ -249,6 +268,10 @@ export class OverflowMenu extends LitElement {
     );
   }
 
+  private isCameraSwitchEnabled(): boolean {
+    return this.appMode === AppMode.LIVE || this.appMode === AppMode.RECORDING;
+  }
+
   private handleToggleClick(e: Event) {
     e.stopPropagation();
 
@@ -260,6 +283,31 @@ export class OverflowMenu extends LitElement {
     this.dispatchEvent(
       new CustomEvent('record-mode-changed', {
         detail: { recordMode: this.recordMode },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  private handleSwitchCamera(e: Event) {
+    e.stopPropagation();
+    
+    if (!this.isCameraSwitchEnabled()) {
+      return;
+    }
+    
+    this.showMenu = false;
+
+    // Find the next camera in the list
+    const currentIndex = this.availableCameras.findIndex(
+      camera => camera.deviceId === this.currentCameraId
+    );
+    const nextIndex = (currentIndex + 1) % this.availableCameras.length;
+    const nextCamera = this.availableCameras[nextIndex];
+
+    this.dispatchEvent(
+      new CustomEvent('camera-switch-requested', {
+        detail: { deviceId: nextCamera.deviceId },
         bubbles: true,
         composed: true,
       })
