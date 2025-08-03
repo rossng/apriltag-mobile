@@ -301,6 +301,7 @@ export class AprilTagApp extends LitElement {
         <div class="header-controls">
           <family-selector
             .currentFamily=${this.currentFamily}
+            .disabled=${this.appMode === AppMode.RECORDING || this.appMode === AppMode.VIEWING_RECORDED}
             @family-selected=${this.handleFamilySelected}
           ></family-selector>
           <overflow-menu

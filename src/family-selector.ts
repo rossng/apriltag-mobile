@@ -10,6 +10,7 @@ export interface TagFamily {
 export class FamilySelector extends LitElement {
   @property({ type: String }) currentFamily = 'tag36h11';
   @property({ type: Boolean }) showMenu = false;
+  @property({ type: Boolean }) disabled = false;
 
   static styles = css`
     :host {
@@ -63,6 +64,20 @@ export class FamilySelector extends LitElement {
 
     .dropdown.active .dropdown-arrow {
       transform: rotate(180deg);
+    }
+
+    .dropdown.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      border-color: var(--text-secondary);
+      box-shadow: 0 0 10px rgba(128, 128, 128, 0.2);
+    }
+
+    .dropdown.disabled:hover {
+      background: var(--card-bg);
+      border-color: var(--text-secondary);
+      box-shadow: 0 0 10px rgba(128, 128, 128, 0.2);
+      text-shadow: none;
     }
 
     .dropdown-menu {
@@ -162,10 +177,11 @@ export class FamilySelector extends LitElement {
 
     return html`
       <div
-        class="dropdown ${this.showMenu ? 'active' : ''}"
-        @click=${this.toggleMenu}
+        class="dropdown ${this.showMenu ? 'active' : ''} ${this.disabled ? 'disabled' : ''}"
+        @click=${this.disabled ? undefined : this.toggleMenu}
+        title="${this.disabled ? 'Family selection disabled during recording/playback' : (currentFamilyData?.label || currentLabel)}"
       >
-        <span class="dropdown-label" title="${currentFamilyData?.label || currentLabel}">${currentLabel}</span>
+        <span class="dropdown-label">${currentLabel}</span>
         <span class="dropdown-arrow">▼</span>
       </div>
       <div class="dropdown-menu ${this.showMenu ? 'active' : ''}">
@@ -211,7 +227,9 @@ export class FamilySelector extends LitElement {
   };
 
   private toggleMenu() {
-    this.showMenu = !this.showMenu;
+    if (!this.disabled) {
+      this.showMenu = !this.showMenu;
+    }
   }
 
   private selectFamily(familyId: string) {
