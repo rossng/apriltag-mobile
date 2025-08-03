@@ -424,6 +424,8 @@ export class AprilTagApp extends LitElement {
           this.video.videoWidth,
           this.video.videoHeight
         );
+        // Force update to ensure camera data is passed to overflow menu
+        this.requestUpdate();
       });
     });
 

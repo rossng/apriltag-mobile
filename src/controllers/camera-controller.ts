@@ -75,6 +75,9 @@ export class CameraController implements ReactiveController {
         this.currentDeviceId = videoTrack.getSettings().deviceId || null;
       }
 
+      // Re-enumerate devices after getting permission to get device labels
+      await this.enumerateDevices();
+
       this._state = {
         ...this._state,
         stream,
