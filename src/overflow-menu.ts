@@ -232,6 +232,9 @@ export class OverflowMenu extends LitElement {
         <div class="menu-item" @click=${this.handleSelectImage}>
           <span>Select Image</span>
         </div>
+        <div class="menu-item" @click=${this.handleViewExample}>
+          <span>View Example</span>
+        </div>
       </div>
     `;
   }
@@ -339,5 +342,34 @@ export class OverflowMenu extends LitElement {
 
     document.body.appendChild(input);
     input.click();
+  }
+
+  private async handleViewExample(e: Event) {
+    e.stopPropagation();
+    this.showMenu = false;
+
+    try {
+      // Fetch the sample image
+      const response = await fetch('/sample.jpg');
+      if (!response.ok) {
+        throw new Error('Failed to load sample image');
+      }
+      
+      const blob = await response.blob();
+      const file = new File([blob], 'sample.jpg', { type: 'image/jpeg' });
+      
+      this.dispatchEvent(
+        new CustomEvent('image-selected', {
+          detail: { 
+            file,
+            familyId: 'tagStandard52h13'  // Include the family to switch to
+          },
+          bubbles: true,
+          composed: true,
+        })
+      );
+    } catch (error) {
+      console.error('Error loading sample image:', error);
+    }
   }
 }

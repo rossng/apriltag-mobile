@@ -485,7 +485,13 @@ export class AprilTagApp extends LitElement {
   }
 
   handleImageSelected(e: CustomEvent): void {
-    const { file } = e.detail;
+    const { file, familyId } = e.detail;
+    
+    // Switch family if specified (for example image)
+    if (familyId) {
+      this.switchFamily(familyId);
+    }
+    
     this.detectionController?.loadImageFile(file);
     this.setAppMode(AppMode.IMAGE_MODE);
   }
