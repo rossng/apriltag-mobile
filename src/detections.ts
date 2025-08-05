@@ -11,6 +11,7 @@ export class Detections extends LitElement {
     width: number;
     height: number;
   };
+  @property({ type: Boolean }) coverMode: boolean = true;
 
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
@@ -40,7 +41,7 @@ export class Detections extends LitElement {
 
   render() {
     return html`
-      <canvas class="fill-mode"></canvas>
+      <canvas class="${this.coverMode ? 'cover-mode' : 'fill-mode'}"></canvas>
     `;
   }
 
@@ -54,7 +55,8 @@ export class Detections extends LitElement {
       changedProperties.has('detections') ||
       changedProperties.has('imageData') ||
       changedProperties.has('showImage') ||
-      changedProperties.has('videoDimensions')
+      changedProperties.has('videoDimensions') ||
+      changedProperties.has('coverMode')
     ) {
       this.drawCanvas();
     }

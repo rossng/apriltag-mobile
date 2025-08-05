@@ -8,6 +8,7 @@ export class OverflowMenu extends LitElement {
   @property({ type: String }) appMode: AppMode = AppMode.LIVE;
   @property({ type: Array }) availableCameras: MediaDeviceInfo[] = [];
   @property({ type: String }) currentCameraId: string | null = null;
+  @property({ type: Boolean }) coverMode = true;
   @state() private showMenu = false;
 
   static styles = css`
@@ -186,6 +187,7 @@ export class OverflowMenu extends LitElement {
     const isRecordModeDisabled = this.isRecordModeDisabled();
     const isCameraSwitchEnabled = this.isCameraSwitchEnabled();
     const isImageSelectionDisabled = this.appMode === AppMode.RECORDING || this.appMode === AppMode.VIEWING_RECORDED;
+    const isCoverModeDisabled = this.isCoverModeDisabled();
 
     return html`
       <button
@@ -212,6 +214,23 @@ export class OverflowMenu extends LitElement {
             title="${isRecordModeDisabled
               ? 'Record mode is disabled while viewing frozen video or images'
               : ''}"
+          ></div>
+        </div>
+        <div
+          class="menu-item ${isCoverModeDisabled ? 'disabled' : ''}"
+          @click=${this.handleMenuItemClick}
+        >
+          <span>${this.coverMode ? 'Cover' : 'Contain'} Mode</span>
+          <div
+            class="toggle-switch ${this.coverMode
+              ? 'active'
+              : ''} ${isCoverModeDisabled ? 'disabled' : ''}"
+            @click=${this.handleCoverModeToggleClick}
+            title="${isCoverModeDisabled
+              ? 'Cover/Contain mode is disabled for recorded tags and uploaded images'
+              : this.coverMode 
+                ? 'Switch to contain mode (show full image)'
+                : 'Switch to cover mode (fill viewport)'}"
           ></div>
         </div>
         ${this.availableCameras.length > 1
@@ -291,6 +310,12 @@ export class OverflowMenu extends LitElement {
     return this.appMode === AppMode.LIVE || this.appMode === AppMode.RECORDING;
   }
 
+  private isCoverModeDisabled(): boolean {
+    return (
+      this.appMode === AppMode.VIEWING_RECORDED || this.appMode === AppMode.IMAGE_MODE
+    );
+  }
+
   private handleToggleClick(e: Event) {
     e.stopPropagation();
 
@@ -302,6 +327,23 @@ export class OverflowMenu extends LitElement {
     this.dispatchEvent(
       new CustomEvent('record-mode-changed', {
         detail: { recordMode: this.recordMode },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  private handleCoverModeToggleClick(e: Event) {
+    e.stopPropagation();
+
+    if (this.isCoverModeDisabled()) {
+      return;
+    }
+
+    this.coverMode = !this.coverMode;
+    this.dispatchEvent(
+      new CustomEvent('cover-mode-changed', {
+        detail: { coverMode: this.coverMode },
         bubbles: true,
         composed: true,
       })
