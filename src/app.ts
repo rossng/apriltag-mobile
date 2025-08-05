@@ -22,6 +22,7 @@ export class AprilTagApp extends LitElement {
     localStorage.getItem('selectedFamily') || 'tag36h11';
   @state() private recordMode = false;
   @state() private captureEnabled = false;
+  @state() private coverMode = true;
 
   private video!: HTMLVideoElement;
 
@@ -131,6 +132,10 @@ export class AprilTagApp extends LitElement {
 
     video {
       object-fit: cover;
+    }
+
+    video.contain-mode {
+      object-fit: contain;
     }
 
     apriltag-detections {
@@ -309,7 +314,9 @@ export class AprilTagApp extends LitElement {
             .appMode=${this.appMode}
             .availableCameras=${this.cameraController?.availableCameras || []}
             .currentCameraId=${this.cameraController?.currentCameraId}
+            .coverMode=${this.coverMode}
             @record-mode-changed=${this.handleRecordModeChanged}
+            @cover-mode-changed=${this.handleCoverModeChanged}
             @image-selected=${this.handleImageSelected}
             @camera-switch-requested=${this.handleCameraSwitchRequested}
           ></overflow-menu>
@@ -326,7 +333,7 @@ export class AprilTagApp extends LitElement {
             class="${this.appMode !== AppMode.LIVE &&
             this.appMode !== AppMode.RECORDING
               ? 'hidden'
-              : ''}"
+              : ''} ${!this.coverMode ? 'contain-mode' : ''}"
             autoplay
             muted
             playsinline
@@ -339,6 +346,7 @@ export class AprilTagApp extends LitElement {
             .showImage=${this.appMode === AppMode.PAUSED ||
             this.appMode === AppMode.IMAGE_MODE}
             .videoDimensions=${this.cameraController?.dimensions}
+            .coverMode=${this.coverMode}
             style="display: ${this.appMode === AppMode.VIEWING_RECORDED
               ? 'none'
               : 'block'}"
@@ -491,6 +499,11 @@ export class AprilTagApp extends LitElement {
     if (!recordMode && this.recordingController?.isActive) {
       this.recordingController.stopRecording();
     }
+  }
+
+  handleCoverModeChanged(e: CustomEvent): void {
+    const { coverMode } = e.detail;
+    this.coverMode = coverMode;
   }
 
   handleImageSelected(e: CustomEvent): void {
