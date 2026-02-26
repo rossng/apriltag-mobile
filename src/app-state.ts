@@ -14,6 +14,7 @@ export interface CameraState {
 
 export interface DetectionState {
   detections: import('./detector').Detection[];
+  duplicateIds: number[];
   frozenFrame: ImageData | null;
   selectedImage: ImageData | null;
   isProcessing: boolean;
@@ -49,6 +50,7 @@ export const createInitialState = (): AppState => ({
   },
   detection: {
     detections: [],
+    duplicateIds: [],
     frozenFrame: null,
     selectedImage: null,
     isProcessing: false,

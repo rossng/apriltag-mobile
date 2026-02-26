@@ -16,6 +16,21 @@ export interface ImageDimensions {
   height: number;
 }
 
+/**
+ * Find marker IDs that appear more than once in a set of detections.
+ */
+export function findDuplicateIds(detections: Detection[]): number[] {
+  const counts = new Map<number, number>();
+  for (const d of detections) {
+    counts.set(d.id, (counts.get(d.id) ?? 0) + 1);
+  }
+  const duplicates: number[] = [];
+  for (const [id, count] of counts) {
+    if (count > 1) duplicates.push(id);
+  }
+  return duplicates.sort((a, b) => a - b);
+}
+
 export class AprilTagDetector {
   private detector: MainModule;
   private initialized = false;
