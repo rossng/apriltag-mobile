@@ -1,5 +1,6 @@
 import { ReactiveController, ReactiveControllerHost } from 'lit';
 import { DetectionState, AppMode } from '../app-state';
+import { findDuplicateIds } from '../detector';
 import type { AprilTagDetector, Detection } from '../detector';
 
 export class DetectionController implements ReactiveController {
@@ -7,6 +8,7 @@ export class DetectionController implements ReactiveController {
   private detector: AprilTagDetector;
   private _state: DetectionState = {
     detections: [],
+    duplicateIds: [],
     frozenFrame: null,
     selectedImage: null,
     isProcessing: false,
@@ -71,6 +73,10 @@ export class DetectionController implements ReactiveController {
     return this._state.detections;
   }
 
+  get duplicateIds(): number[] {
+    return this._state.duplicateIds;
+  }
+
   get frozenFrame(): ImageData | null {
     return this._state.frozenFrame;
   }
@@ -123,6 +129,7 @@ export class DetectionController implements ReactiveController {
         ...this._state,
         frozenFrame,
         detections,
+        duplicateIds: findDuplicateIds(detections),
       };
 
       this.host.requestUpdate();
@@ -141,6 +148,7 @@ export class DetectionController implements ReactiveController {
         ...this._state,
         selectedImage,
         detections,
+        duplicateIds: findDuplicateIds(detections),
         frozenFrame: null,
       };
 
@@ -159,6 +167,7 @@ export class DetectionController implements ReactiveController {
       frozenFrame: null,
       selectedImage: null,
       detections: [],
+      duplicateIds: [],
     };
 
     this.host.requestUpdate();
@@ -168,16 +177,17 @@ export class DetectionController implements ReactiveController {
   async redetectInFrozenFrame(): Promise<void> {
     const frozenFrame = this._state.frozenFrame;
     if (!frozenFrame) return;
-    
+
     try {
       this._state = { ...this._state, isProcessing: true };
       this.host.requestUpdate();
-      
+
       const detections = await this.detectInFrame(frozenFrame);
-      
+
       this._state = {
         ...this._state,
         detections,
+        duplicateIds: findDuplicateIds(detections),
         isProcessing: false,
       };
       
@@ -192,16 +202,17 @@ export class DetectionController implements ReactiveController {
   async redetectInSelectedImage(): Promise<void> {
     const selectedImage = this._state.selectedImage;
     if (!selectedImage) return;
-    
+
     try {
       this._state = { ...this._state, isProcessing: true };
       this.host.requestUpdate();
-      
+
       const detections = await this.detectInFrame(selectedImage);
-      
+
       this._state = {
         ...this._state,
         detections,
+        duplicateIds: findDuplicateIds(detections),
         isProcessing: false,
       };
       
@@ -265,15 +276,17 @@ export class DetectionController implements ReactiveController {
       const imageData = this.captureCurrentFrame();
       if (imageData) {
         const detections = await this.detectInFrame(imageData);
+        const duplicateIds = findDuplicateIds(detections);
 
         this._state = {
           ...this._state,
           detections,
+          duplicateIds,
           isProcessing: false,
         };
 
         this.host.requestUpdate();
-        this.dispatchEvent('detections-updated', { detections });
+        this.dispatchEvent('detections-updated', { detections, duplicateIds });
       }
     } catch (error) {
       console.error('Error processing frame:', error);

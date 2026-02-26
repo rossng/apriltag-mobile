@@ -248,6 +248,25 @@ export class AprilTagApp extends LitElement {
       animation: neonPulse 2s ease-in-out infinite;
     }
 
+    .duplicate-warning {
+      position: fixed;
+      top: 100px;
+      left: 20px;
+      right: 20px;
+      background: rgba(40, 0, 0, 0.9);
+      color: #ff4444;
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: 1px solid #ff4444;
+      text-align: center;
+      z-index: 999;
+      font-size: 14px;
+      box-shadow:
+        0 0 20px rgba(255, 68, 68, 0.4),
+        inset 0 0 10px rgba(255, 68, 68, 0.1);
+      text-shadow: 0 0 10px #ff4444;
+    }
+
     @keyframes neonPulse {
       0%,
       100% {
@@ -327,6 +346,12 @@ export class AprilTagApp extends LitElement {
         ${this.statusController?.message}
       </div>
 
+      ${(this.detectionController?.duplicateIds?.length ?? 0) > 0
+        ? html`<div class="duplicate-warning">
+            Duplicate marker${this.detectionController!.duplicateIds.length > 1 ? 's' : ''}: ${this.detectionController!.duplicateIds.join(', ')}
+          </div>`
+        : ''}
+
       <div class="camera-container">
         <div class="video-overlay">
           <video
@@ -340,6 +365,7 @@ export class AprilTagApp extends LitElement {
           ></video>
           <apriltag-detections
             .detections=${this.detectionController?.detections || []}
+            .duplicateIds=${this.detectionController?.duplicateIds || []}
             .imageData=${this.appMode === AppMode.IMAGE_MODE
               ? this.detectionController?.selectedImage
               : this.detectionController?.frozenFrame}

@@ -5,6 +5,7 @@ import type { Detection } from './detector';
 @customElement('apriltag-detections')
 export class Detections extends LitElement {
   @property({ type: Array }) detections: Detection[] = [];
+  @property({ type: Array }) duplicateIds: number[] = [];
   @property({ type: Object }) imageData?: ImageData;
   @property({ type: Boolean }) showImage: boolean = false;
   @property({ type: Object }) videoDimensions?: {
@@ -53,6 +54,7 @@ export class Detections extends LitElement {
   updated(changedProperties: Map<string, any>) {
     if (
       changedProperties.has('detections') ||
+      changedProperties.has('duplicateIds') ||
       changedProperties.has('imageData') ||
       changedProperties.has('showImage') ||
       changedProperties.has('videoDimensions') ||
@@ -92,6 +94,8 @@ export class Detections extends LitElement {
   private drawDetections() {
     if (!this.detections || this.detections.length === 0) return;
 
+    const duplicateSet = new Set(this.duplicateIds);
+
     // Calculate font size relative to viewport dimensions
     const baseFontSize = this.calculateViewportRelativeFontSize();
     this.ctx.font = `bold ${baseFontSize}px Arial`;
@@ -105,11 +109,18 @@ export class Detections extends LitElement {
 
     this.detections.forEach((detection) => {
       const corners = detection.corners;
+      const isDuplicate = duplicateSet.has(detection.id);
 
-      // Draw tag outline with neon cyan glow
-      this.ctx.shadowColor = '#00ffff';
+      // Duplicate markers use red/orange, normal markers use cyan
+      const outlineColor = isDuplicate ? '#ff4444' : '#00ffff';
+      const cornerColor = isDuplicate ? '#ff8800' : '#ff00ff';
+      const textFillColor = isDuplicate ? '#ff4444' : '#00ff80';
+      const textGlowColor = isDuplicate ? '#ff4444' : '#00ff80';
+
+      // Draw tag outline
+      this.ctx.shadowColor = outlineColor;
       this.ctx.shadowBlur = 10;
-      this.ctx.strokeStyle = '#00ffff';
+      this.ctx.strokeStyle = outlineColor;
       this.ctx.lineWidth = outlineWidth;
       this.ctx.beginPath();
       this.ctx.moveTo(corners[0].x, corners[0].y);
@@ -119,9 +130,9 @@ export class Detections extends LitElement {
       this.ctx.closePath();
       this.ctx.stroke();
 
-      // Draw top-left corner as neon magenta circle
+      // Draw top-left corner circle
       this.ctx.shadowBlur = 0;
-      this.ctx.fillStyle = '#ff00ff';
+      this.ctx.fillStyle = cornerColor;
       this.ctx.beginPath();
       this.ctx.arc(corners[0].x, corners[0].y, circleRadius, 0, 2 * Math.PI);
       this.ctx.fill();
@@ -138,15 +149,15 @@ export class Detections extends LitElement {
       this.ctx.lineWidth = textOutlineWidth;
       this.ctx.strokeText(text, center.x, center.y + 10);
 
-      // Draw cyan outline (thinner)
-      this.ctx.strokeStyle = '#00ffff';
+      // Draw colored outline (thinner)
+      this.ctx.strokeStyle = outlineColor;
       this.ctx.lineWidth = textInnerOutlineWidth;
       this.ctx.strokeText(text, center.x, center.y + 10);
 
-      // Draw neon green fill with glow
-      this.ctx.shadowColor = '#00ff80';
+      // Draw fill with glow
+      this.ctx.shadowColor = textGlowColor;
       this.ctx.shadowBlur = 5;
-      this.ctx.fillStyle = '#00ff80';
+      this.ctx.fillStyle = textFillColor;
       this.ctx.fillText(text, center.x, center.y + 10);
 
       // Reset shadow for next detection
