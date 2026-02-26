@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <meta property="og:title" content="AprilTag Detector - Live AprilTag Scanner" />
+    <meta property="og:description" content="Detect AprilTags instantly in your browser using your camera or uploaded images. No download required." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="AprilTag Detector" />
+    
+    <link rel="icon" type="image/svg+xml" href="/apriltag-mobile/pr-preview/pr-2/favicon.svg" />
+    
+    <title>AprilTag Detector - Live AprilTag Scanner</title>
+    <style>
+      :root {
+        --neon-cyan: #00ffff;
+        --neon-magenta: #ff00ff;
+        --neon-purple: #8000ff;
+        --neon-blue: #0080ff;
+        --neon-green: #00ff80;
+        --neon-pink: #ff0080;
+
+        --dark-bg: #0a0a0f;
+        --darker-bg: #050508;
+        --card-bg: rgba(16, 16, 32, 0.8);
+        --glass-bg: rgba(0, 0, 0, 0.6);
+
+        --text-primary: #e0e0ff;
+        --text-secondary: #b0b0d0;
+        --text-accent: var(--neon-cyan);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Courier New', monospace;
+        background: linear-gradient(
+          135deg,
+          var(--dark-bg) 0%,
+          var(--darker-bg) 100%
+        );
+        color: var(--text-primary);
+        overflow-x: hidden;
+        position: relative;
+      }
+
+      body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background:
+          radial-gradient(
+            circle at 20% 80%,
+            rgba(255, 0, 255, 0.1) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 80% 20%,
+            rgba(0, 255, 255, 0.1) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 40% 40%,
+            rgba(128, 0, 255, 0.05) 0%,
+            transparent 50%
+          );
+        pointer-events: none;
+        z-index: -1;
+      }
+    </style>
+    <script type="module" crossorigin src="/apriltag-mobile/pr-preview/pr-2/assets/main-BFZAt4Kq.js"></script>
+  </head>
+
+  <body>
+  </body>
+</html>
