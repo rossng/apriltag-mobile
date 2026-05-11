@@ -1,9 +1,13 @@
 {
-  description = "AprilTag Mobile - Development environment with Emscripten";
+  description = "AprilTag Mobile - Detect AprilTags from your camera in the browser";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    apriltag-src = {
+      url = "github:AprilRobotics/apriltag";
+      flake = false;
+    };
   };
 
   outputs =
@@ -11,135 +15,115 @@
       self,
       nixpkgs,
       flake-utils,
+      apriltag-src,
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-      in
-      {
-        devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [
-            # Core build tools
-            emscripten
-            python3
-            nodejs
-            nodePackages.npm
 
-            # Development tools
-            git
-            gnumake
-            gcc
+        # Builds the AprilTag detector to WebAssembly, linking the upstream
+        # AprilRobotics/apriltag C sources together with the Emscripten wrapper
+        # in ./wasm/src. Produces apriltag_wasm.{js,wasm,d.ts}.
+        apriltagWasm = pkgs.stdenv.mkDerivation {
+          pname = "apriltag-wasm";
+          version = builtins.substring 0 7 apriltag-src.rev;
 
-            # Shell utilities
-            which
-            curl
-            jq
+          nativeBuildInputs = [
+            pkgs.emscripten
+            pkgs.typescript
           ];
 
-          shellHook = ''
-            echo "🚀 AprilTag Mobile Development Environment"
-            echo "=========================================="
-            echo "Available tools:"
-            echo "  • emcc $(emcc --version | head -n1)"
-            echo "  • Node.js $(node --version)"
-            echo "  • Python $(python3 --version)"
-            echo "  • Make $(make --version | head -n1)"
-            echo ""
-            echo "Quick start:"
-            echo "  1. Initialize submodules: git submodule update --init --recursive"
-            echo "  2. Install dependencies: npm install"
-            echo "  3. Build WASM library: ./build.sh"
-            echo "  4. Start dev server: npm run dev"
-            echo ""
-            echo "The build environment is ready! 🎯"
-            echo ""
+          dontUnpack = true;
 
-            # Ensure git submodules are initialized
-            if [ ! -d "apriltag-js-standalone/.git" ]; then
-              echo "⚠️  Submodules not initialized. Run: git submodule update --init --recursive"
-            fi
+          buildPhase = ''
+            runHook preBuild
 
-            # Check if WASM files exist
-            if [ ! -f "public/apriltag_wasm.js" ] || [ ! -f "public/apriltag_wasm.wasm" ]; then
-              echo "⚠️  WASM files not found. The app will not work without them."
-              echo "💡 Run './build.sh' to compile the AprilTag WASM library."
-            fi
+            export HOME=$TMPDIR
+            mkdir -p apriltag
+            cp -r ${apriltag-src}/. apriltag/
+            cp -r ${./wasm/src} src
+            chmod -R u+w apriltag src
+
+            APRILTAG_SRCS=$(ls apriltag/*.c apriltag/common/*.c | grep -v apriltag_pywrap.c)
+            WRAPPER_SRCS="src/apriltag_js.c src/str_json.c"
+
+            mkdir -p out
+            emcc -Os \
+              -s MODULARIZE=1 \
+              -s 'EXPORT_NAME="AprilTagWasm"' \
+              -s WASM=1 \
+              -s ALLOW_MEMORY_GROWTH=1 \
+              -s EXPORTED_FUNCTIONS="['_free']" \
+              -s EXPORTED_RUNTIME_METHODS='["cwrap", "getValue", "setValue", "HEAPU8"]' \
+              -s EXPORT_ES6 \
+              -Iapriltag \
+              --emit-tsd apriltag_wasm.d.ts \
+              -o out/apriltag_wasm.js \
+              $APRILTAG_SRCS $WRAPPER_SRCS
+
+            runHook postBuild
           '';
 
-          # Environment variables
-          EMSCRIPTEN_ROOT = "${pkgs.emscripten}/share/emscripten";
-
-          # Make sure the Emscripten tools are available
-          EM_CONFIG = "${pkgs.emscripten}/share/emscripten/.emscripten";
+          installPhase = ''
+            runHook preInstall
+            mkdir -p $out
+            cp out/apriltag_wasm.js out/apriltag_wasm.wasm out/apriltag_wasm.d.ts $out/
+            runHook postInstall
+          '';
         };
 
-        # Optional: provide the build script as a Nix app
+        # Copy the built WASM artifacts into the source tree:
+        #   - public/        is served by Vite at runtime
+        #   - src/apriltag/  provides the .d.ts for TypeScript
+        installWasm = pkgs.writeShellScript "install-apriltag-wasm" ''
+          set -euo pipefail
+          mkdir -p public src/apriltag
+          install -m 644 ${apriltagWasm}/apriltag_wasm.js   public/apriltag_wasm.js
+          install -m 644 ${apriltagWasm}/apriltag_wasm.wasm public/apriltag_wasm.wasm
+          install -m 644 ${apriltagWasm}/apriltag_wasm.js   src/apriltag/apriltag_wasm.js
+          install -m 644 ${apriltagWasm}/apriltag_wasm.wasm src/apriltag/apriltag_wasm.wasm
+          install -m 644 ${apriltagWasm}/apriltag_wasm.d.ts src/apriltag/apriltag_wasm.d.ts
+          echo "✓ WASM artifacts installed to public/ and src/apriltag/"
+        '';
+      in
+      {
+        packages = {
+          apriltagWasm = apriltagWasm;
+          default = apriltagWasm;
+        };
+
+        devShells.default = pkgs.mkShell {
+          packages = with pkgs; [
+            emscripten
+            nodejs
+            nodePackages.npm
+          ];
+        };
+
         apps.build = {
           type = "app";
-          program = "${pkgs.writeShellScript "build-apriltag" ''
-            set -e
-            export PATH=${
-              pkgs.lib.makeBinPath (
-                with pkgs;
-                [
-                  emscripten
-                  git
-                  gnumake
-                  gcc
-                  which
-                  curl
-                  typescript
-                ]
-              )
-            }:$PATH
-            export EMSCRIPTEN_ROOT="${pkgs.emscripten}/share/emscripten"
-            export EM_CONFIG="${pkgs.emscripten}/share/emscripten/.emscripten"
-
-            echo "Building AprilTag WASM with Nix environment..."
-            ${self.devShells.${system}.default.shellHook}
-            exec ./build.sh
-          ''}";
+          program = toString installWasm;
         };
 
-        # Optional: provide a serve app for development
         apps.serve = {
           type = "app";
-          program = "${pkgs.writeShellScript "serve-apriltag" ''
-            set -e
-            export PATH=${
-              pkgs.lib.makeBinPath (
-                with pkgs;
-                [
-                  nodejs
-                  nodePackages.npm
-                  emscripten
-                  git
-                  gnumake
-                  gcc
-                  which
-                  curl
+          program = toString (
+            pkgs.writeShellScript "apriltag-mobile-serve" ''
+              set -euo pipefail
+              export PATH=${
+                pkgs.lib.makeBinPath [
+                  pkgs.nodejs
+                  pkgs.nodePackages.npm
                 ]
-              )
-            }:$PATH
-            export EMSCRIPTEN_ROOT="${pkgs.emscripten}/share/emscripten"
-            export EM_CONFIG="${pkgs.emscripten}/share/emscripten/.emscripten"
-
-            echo "Starting Vite development server..."
-            if [ ! -f "public/apriltag_wasm.js" ]; then
-              echo "WASM files not found. Building first..."
-              ./build.sh
-            fi
-            if [ ! -d "node_modules" ]; then
-              echo "Installing npm dependencies..."
-              npm install
-            fi
-            echo "Starting development server..."
-            exec npm run dev
-          ''}";
+              }:$PATH
+              ${installWasm}
+              [ -d node_modules ] || npm install
+              exec npm run dev
+            ''
+          );
         };
 
-        # Default app points to build
         apps.default = self.apps.${system}.build;
       }
     );

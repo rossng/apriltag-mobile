@@ -1,3 +1,0 @@
-[submodule "apriltag-js-standalone"]
-	path = apriltag-js-standalone
-	url = git@github.com:rossng/apriltag-js-standalone.git

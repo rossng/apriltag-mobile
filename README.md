@@ -6,34 +6,51 @@ A mobile-first web application for detecting AprilTags using your device's camer
 
 ## Local Development
 
-1. Clone this repository with submodules:
+The build is fully driven by Nix — no submodules, no `build.sh`. The
+[AprilRobotics/apriltag](https://github.com/AprilRobotics/apriltag) C library is
+fetched as a flake input and compiled to WebAssembly together with the wrapper
+sources in `wasm/src/`.
+
+1. Clone the repository:
 
    ```bash
-   git clone --recursive https://github.com/yourusername/apriltag-mobile.git
+   git clone https://github.com/rossng/apriltag-mobile.git
    cd apriltag-mobile
    ```
 
-2. Build the WASM library:
+2. Build the WASM library and start the dev server:
+
+   ```bash
+   nix run .#serve
+   ```
+
+   Or build the WASM artifacts only:
 
    ```bash
    nix run .#build
    ```
 
-3. Start the development server:
+   Or get a shell with `emcc`, `node`, and `npm` available:
 
    ```bash
-   nix run .#serve
-
-   # Or manually:
-   npm run dev
+   nix develop
    ```
 
-4. Open in your mobile browser or use browser dev tools mobile view
+3. To bump the AprilTag library version:
 
-## Real AprilTag Detection
+   ```bash
+   nix flake update apriltag-src
+   ```
 
-This app uses the AprilTag WASM library from [apriltag-js-standalone](https://github.com/rossng/apriltag-js-standalone):
+## AprilTag Library
+
+The detector is built from upstream
+[AprilRobotics/apriltag](https://github.com/AprilRobotics/apriltag), pinned via
+`flake.lock`. The Emscripten wrapper in `wasm/src/` is derived from
+[apriltag-js-standalone](https://github.com/arenaxr/apriltag-js-standalone)
+(BSD 3-Clause; see `wasm/LICENSE`).
 
 ## License
 
-Based on the apriltag-js-standalone project. See [original repository](https://github.com/arenaxr/apriltag-js-standalone) for license details.
+The mobile app code is MIT licensed. The bundled AprilTag library and wrapper
+have their own licenses — see `wasm/LICENSE`.
