@@ -98,7 +98,7 @@ int atagjs_init()
         printf("Error initializing detector.");
         return -1;
     }
-    apriltag_detector_add_family_bits(g_td, g_tf, 1);
+    apriltag_detector_add_family_bits(g_td, g_tf, 2);
     g_td->quad_decimate = 2.0;
     g_td->quad_sigma = 0.0;
     g_td->nthreads = 1;
@@ -187,7 +187,7 @@ int atagjs_set_family(const char* family_name)
     }
 
     // Add new family to detector
-    apriltag_detector_add_family_bits(g_td, g_tf, 1);
+    apriltag_detector_add_family_bits(g_td, g_tf, 2);
 
     printf("Switched to tag family: %s\n", family_name);
     return 0;
