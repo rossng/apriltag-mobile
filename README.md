@@ -47,10 +47,16 @@ sources in `wasm/src/`.
 The detector is built from upstream
 [AprilRobotics/apriltag](https://github.com/AprilRobotics/apriltag), pinned via
 `flake.lock`. The Emscripten wrapper in `wasm/src/` is derived from
-[apriltag-js-standalone](https://github.com/arenaxr/apriltag-js-standalone)
-(BSD 3-Clause; see `wasm/LICENSE`).
+[apriltag-js-standalone](https://github.com/arenaxr/apriltag-js-standalone).
 
 ## License
 
-The mobile app code is MIT licensed. The bundled AprilTag library and wrapper
-have their own licenses — see `wasm/LICENSE`.
+The mobile app code is MIT licensed. The compiled WebAssembly module links
+in two BSD-licensed upstream projects:
+
+- AprilTag (BSD-2-Clause) — Regents of the University of Michigan
+- apriltag-js-standalone wrapper (BSD-3-Clause) — CONIX Research Center
+
+See [`wasm/NOTICE.md`](./wasm/NOTICE.md) for provenance details and pointers
+to both license texts. The build also copies both license files into
+`public/` so the deployed site ships them alongside the WASM binary.

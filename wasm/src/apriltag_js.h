@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2020 The CONIX Research Center (Wiselab CMU)
+//
+// Vendored from https://github.com/arenaxr/apriltag-js-standalone
+// at commit f746d89df9f5ca55a8d975372a68c9a309e3ae20.
+// See wasm/LICENSE.apriltag-js-standalone for the full BSD-3-Clause license text.
+
 /** @file apriltag_js.h
 *  @brief Definitions for the apriltag detector
 *
