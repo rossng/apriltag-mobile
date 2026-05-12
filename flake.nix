@@ -69,22 +69,35 @@
             runHook preInstall
             mkdir -p $out
             cp out/apriltag_wasm.js out/apriltag_wasm.wasm out/apriltag_wasm.d.ts $out/
+
+            # Ship the upstream licenses alongside the binary so any
+            # redistribution carries the required attribution.
+            install -m 644 ${apriltag-src}/LICENSE.md        $out/LICENSE.apriltag
+            install -m 644 ${./wasm/LICENSE.apriltag-js-standalone} \
+              $out/LICENSE.apriltag-js-standalone
+            install -m 644 ${./wasm/NOTICE.md}               $out/NOTICE.md
+
             runHook postInstall
           '';
         };
 
         # Copy the built WASM artifacts into the source tree:
-        #   - public/        is served by Vite at runtime
-        #   - src/apriltag/  provides the .d.ts for TypeScript
+        #   - public/        is served by Vite at runtime (including license texts
+        #                    so the deployed binary distribution carries its
+        #                    required BSD attribution).
+        #   - src/apriltag/  provides the .d.ts/.js/.wasm for Vite at bundle time.
         installWasm = pkgs.writeShellScript "install-apriltag-wasm" ''
           set -euo pipefail
           mkdir -p public src/apriltag
-          install -m 644 ${apriltagWasm}/apriltag_wasm.js   public/apriltag_wasm.js
-          install -m 644 ${apriltagWasm}/apriltag_wasm.wasm public/apriltag_wasm.wasm
-          install -m 644 ${apriltagWasm}/apriltag_wasm.js   src/apriltag/apriltag_wasm.js
-          install -m 644 ${apriltagWasm}/apriltag_wasm.wasm src/apriltag/apriltag_wasm.wasm
-          install -m 644 ${apriltagWasm}/apriltag_wasm.d.ts src/apriltag/apriltag_wasm.d.ts
-          echo "✓ WASM artifacts installed to public/ and src/apriltag/"
+          install -m 644 ${apriltagWasm}/apriltag_wasm.js                  public/apriltag_wasm.js
+          install -m 644 ${apriltagWasm}/apriltag_wasm.wasm                public/apriltag_wasm.wasm
+          install -m 644 ${apriltagWasm}/LICENSE.apriltag                  public/LICENSE.apriltag
+          install -m 644 ${apriltagWasm}/LICENSE.apriltag-js-standalone    public/LICENSE.apriltag-js-standalone
+          install -m 644 ${apriltagWasm}/NOTICE.md                         public/NOTICE.md
+          install -m 644 ${apriltagWasm}/apriltag_wasm.js                  src/apriltag/apriltag_wasm.js
+          install -m 644 ${apriltagWasm}/apriltag_wasm.wasm                src/apriltag/apriltag_wasm.wasm
+          install -m 644 ${apriltagWasm}/apriltag_wasm.d.ts                src/apriltag/apriltag_wasm.d.ts
+          echo "✓ WASM artifacts and license notices installed to public/ and src/apriltag/"
         '';
       in
       {

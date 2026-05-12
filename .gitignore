@@ -1,6 +1,9 @@
 # Generated WASM artifacts (built by `nix run .#build`)
 public/apriltag_wasm.js
 public/apriltag_wasm.wasm
+public/LICENSE.apriltag
+public/LICENSE.apriltag-js-standalone
+public/NOTICE.md
 src/apriltag/apriltag_wasm.js
 src/apriltag/apriltag_wasm.wasm
 src/apriltag/apriltag_wasm.d.ts
