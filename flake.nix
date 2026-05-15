@@ -22,7 +22,7 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        # Builds the AprilTag detector to WebAssembly, linking the upstream
+        # Builds the AprilTag detector to WebAssembly, linking the
         # AprilRobotics/apriltag C sources together with the Emscripten wrapper
         # in ./wasm/src. Produces apriltag_wasm.{js,wasm,d.ts}.
         apriltagWasm = pkgs.stdenv.mkDerivation {
@@ -70,8 +70,7 @@
             mkdir -p $out
             cp out/apriltag_wasm.js out/apriltag_wasm.wasm out/apriltag_wasm.d.ts $out/
 
-            # Ship the upstream licenses alongside the binary so any
-            # redistribution carries the required attribution.
+            # BSD attribution for the binary distribution.
             install -m 644 ${apriltag-src}/LICENSE.md        $out/LICENSE.apriltag
             install -m 644 ${./wasm/LICENSE.apriltag-js-standalone} \
               $out/LICENSE.apriltag-js-standalone
@@ -81,11 +80,15 @@
           '';
         };
 
-        # Copy the built WASM artifacts into the source tree:
-        #   - public/        is served by Vite at runtime (including license texts
-        #                    so the deployed binary distribution carries its
-        #                    required BSD attribution).
-        #   - src/apriltag/  provides the .d.ts/.js/.wasm for Vite at bundle time.
+        # Copy the build artifacts into the source tree:
+        #   - public/        is served by Vite at runtime (license texts go
+        #                    here so the deployed binary distribution carries
+        #                    the required BSD attribution).
+        #   - src/apriltag/  is consumed by Vite at bundle time: the .wasm
+        #                    must sit next to apriltag_wasm.js so Vite can
+        #                    resolve the new URL('apriltag_wasm.wasm',
+        #                    import.meta.url) reference and emit it as an
+        #                    asset; the .d.ts provides types to TypeScript.
         installWasm = pkgs.writeShellScript "install-apriltag-wasm" ''
           set -euo pipefail
           mkdir -p public src/apriltag
