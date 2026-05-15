@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "build-wasm": "./build.sh",
+    "build-wasm": "nix run .#build",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write ."
   },
