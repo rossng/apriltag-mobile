@@ -1,39 +1,46 @@
 # AprilTag Mobile Detector
 
-A mobile-first web application for detecting AprilTags using your device's camera. Built with vanilla JavaScript and optimized for mobile devices.
-
-**Note:** The detector is currently configured to use tag36h11 by default. While other families are compiled in, the current JavaScript wrapper may need modifications to support family switching at runtime.
+A mobile-first web app for detecting AprilTags using your device's camera. The
+detector is the upstream [AprilRobotics/apriltag](https://github.com/AprilRobotics/apriltag)
+C library compiled to WebAssembly via Emscripten, driven from TypeScript /
+[Lit](https://lit.dev/).
 
 ## Local Development
 
-1. Clone this repository with submodules:
+The whole build is driven by Nix. `apriltag-src` is fetched as a flake input
+(pinned in `flake.lock`) and compiled to WASM alongside the wrapper sources in
+`wasm/src/`.
 
-   ```bash
-   git clone --recursive https://github.com/yourusername/apriltag-mobile.git
-   cd apriltag-mobile
-   ```
+```bash
+git clone https://github.com/rossng/apriltag-mobile.git
+cd apriltag-mobile
 
-2. Build the WASM library:
+# Build the WASM module and start the dev server:
+nix run .#serve
 
-   ```bash
-   nix run .#build
-   ```
+# Or build the WASM artifacts only:
+nix run .#build
 
-3. Start the development server:
+# Or get a shell with emcc, node, and npm available:
+nix develop
+```
 
-   ```bash
-   nix run .#serve
+To bump the apriltag library version:
 
-   # Or manually:
-   npm run dev
-   ```
-
-4. Open in your mobile browser or use browser dev tools mobile view
-
-## Real AprilTag Detection
-
-This app uses the AprilTag WASM library from [apriltag-js-standalone](https://github.com/rossng/apriltag-js-standalone):
+```bash
+nix flake update apriltag-src
+```
 
 ## License
 
-Based on the apriltag-js-standalone project. See [original repository](https://github.com/arenaxr/apriltag-js-standalone) for license details.
+The mobile app code is MIT licensed. The compiled WebAssembly module links in
+two BSD-licensed upstream projects:
+
+- [AprilTag](https://github.com/AprilRobotics/apriltag) (BSD-2-Clause) — Regents
+  of the University of Michigan
+- [apriltag-js-standalone](https://github.com/arenaxr/apriltag-js-standalone)
+  wrapper (BSD-3-Clause) — CONIX Research Center
+
+See [`wasm/NOTICE.md`](./wasm/NOTICE.md) for provenance details and pointers to
+both license texts. The build copies both into `public/` so the deployed site
+ships them alongside the WASM binary.
