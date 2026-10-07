@@ -1,5 +1,21 @@
 {
   "nodes": {
+    "apriltag-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786123168,
+        "narHash": "sha256-uZoNTvrwM5PHEIoeLnw5MyCFAXmuiMiy9rRt9UuItJU=",
+        "owner": "AprilRobotics",
+        "repo": "apriltag",
+        "rev": "b7c0ebe9aa20f82ec7a828579004f9e706bfecd9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AprilRobotics",
+        "repo": "apriltag",
+        "type": "github"
+      }
+    },
     "flake-utils": {
       "inputs": {
         "systems": "systems"
@@ -36,6 +52,7 @@
     },
     "root": {
       "inputs": {
+        "apriltag-src": "apriltag-src",
         "flake-utils": "flake-utils",
         "nixpkgs": "nixpkgs"
       }
