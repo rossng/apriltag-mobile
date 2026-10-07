@@ -267,6 +267,18 @@ export class AprilTagApp extends LitElement {
       text-shadow: 0 0 10px #ff4444;
     }
 
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
     @keyframes neonPulse {
       0%,
       100% {
@@ -319,6 +331,9 @@ export class AprilTagApp extends LitElement {
   `;
 
   render() {
+    const captureEnabled =
+      this.captureEnabled && this.appMode !== AppMode.VIEWING_RECORDED;
+
     return html`
       <div class="header">
         <h1>AprilTag Detector</h1>
@@ -342,12 +357,15 @@ export class AprilTagApp extends LitElement {
         </div>
       </div>
 
-      <div class="status ${this.statusController?.hasMessage ? 'visible' : ''}">
+      <div
+        class="status ${this.statusController?.hasMessage ? 'visible' : ''}"
+        role="status"
+      >
         ${this.statusController?.message}
       </div>
 
       ${(this.detectionController?.duplicateIds?.length ?? 0) > 0
-        ? html`<div class="duplicate-warning">
+        ? html`<div class="duplicate-warning" role="alert">
             Duplicate marker${this.detectionController!.duplicateIds.length > 1 ? 's' : ''}: ${this.detectionController!.duplicateIds.join(', ')}
           </div>`
         : ''}
@@ -377,6 +395,7 @@ export class AprilTagApp extends LitElement {
               ? 'none'
               : 'block'}"
           ></apriltag-detections>
+          ${this.renderDetectedTagsSummary()}
           ${this.appMode === AppMode.VIEWING_RECORDED
             ? html`
                 <recorded-tags
@@ -390,17 +409,20 @@ export class AprilTagApp extends LitElement {
 
       <div class="controls">
         <button
-          class="capture-button ${this.captureEnabled &&
-          this.appMode !== AppMode.VIEWING_RECORDED
-            ? 'enabled'
-            : ''}"
+          class="capture-button ${captureEnabled ? 'enabled' : ''}"
+          ?disabled=${!captureEnabled}
+          aria-label=${this.getButtonLabel()}
           @click=${this.handleToggleDetection}
         >
           ${this.getButtonIcon()}
         </button>
       </div>
 
-      <button class="about-button" @click=${this.handleAboutClick}>
+      <button
+        class="about-button"
+        aria-label="About"
+        @click=${this.handleAboutClick}
+      >
         <svg viewBox="0 0 24 24">
           <path
             d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"
@@ -630,6 +652,42 @@ export class AprilTagApp extends LitElement {
           this.detectionController.stopContinuousDetection();
           break;
       }
+    }
+  }
+
+  /**
+   * Text summary of the tags currently drawn on the canvas, for assistive
+   * technology and for tests (the canvas itself is opaque to both).
+   */
+  private renderDetectedTagsSummary() {
+    if (this.appMode === AppMode.VIEWING_RECORDED) return '';
+
+    const ids = (this.detectionController?.detections ?? [])
+      .map((d) => d.id)
+      .sort((a, b) => a - b);
+
+    return html`
+      <div
+        class="visually-hidden"
+        data-testid="detected-tags"
+        data-tag-ids=${ids.join(',')}
+      >
+        ${ids.length > 0
+          ? `Detected tags: ${ids.join(', ')}`
+          : 'No tags detected'}
+      </div>
+    `;
+  }
+
+  private getButtonLabel(): string {
+    if (this.appMode === AppMode.IMAGE_MODE) {
+      return 'Close image';
+    } else if (this.recordMode) {
+      return this.recordingController?.isActive
+        ? 'Stop recording'
+        : 'Start recording';
+    } else {
+      return this.appMode === AppMode.PAUSED ? 'Resume' : 'Pause';
     }
   }
 

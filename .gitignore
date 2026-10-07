@@ -11,6 +11,11 @@ src/apriltag/apriltag_wasm.d.ts
 # Vite build output
 dist/
 
+# Playwright output
+test-results/
+playwright-report/
+blob-report/
+
 # Nix
 result
 result-*
