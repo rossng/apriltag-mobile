@@ -73,6 +73,10 @@ export class OverflowMenu extends LitElement {
     }
 
     .menu-item {
+      width: 100%;
+      background: none;
+      border: none;
+      text-align: left;
       padding: 10px 16px;
       cursor: pointer;
       transition: all 0.3s ease;
@@ -192,6 +196,9 @@ export class OverflowMenu extends LitElement {
     return html`
       <button
         class="menu-button ${this.showMenu ? 'active' : ''}"
+        aria-label="More options"
+        aria-haspopup="menu"
+        aria-expanded=${this.showMenu ? 'true' : 'false'}
         @click=${this.toggleMenu}
       >
         <svg viewBox="0 0 24 24">
@@ -200,76 +207,91 @@ export class OverflowMenu extends LitElement {
           <circle cx="12" cy="19" r="1.5" />
         </svg>
       </button>
-      <div class="dropdown-menu ${this.showMenu ? 'active' : ''}">
-        <div
+      <div
+        class="dropdown-menu ${this.showMenu ? 'active' : ''}"
+        role="menu"
+        aria-label="More options"
+      >
+        <button
           class="menu-item ${isRecordModeDisabled ? 'disabled' : ''}"
-          @click=${this.handleMenuItemClick}
+          role="menuitemcheckbox"
+          aria-checked=${this.recordMode ? 'true' : 'false'}
+          aria-disabled=${isRecordModeDisabled ? 'true' : 'false'}
+          @click=${this.handleToggleClick}
+          title="${isRecordModeDisabled
+            ? 'Record mode is disabled while viewing frozen video or images'
+            : ''}"
         >
           <span>Record Mode</span>
-          <div
+          <span
             class="toggle-switch ${this.recordMode
               ? 'active'
               : ''} ${isRecordModeDisabled ? 'disabled' : ''}"
-            @click=${this.handleToggleClick}
-            title="${isRecordModeDisabled
-              ? 'Record mode is disabled while viewing frozen video or images'
-              : ''}"
-          ></div>
-        </div>
-        <div
+          ></span>
+        </button>
+        <button
           class="menu-item ${isCoverModeDisabled ? 'disabled' : ''}"
-          @click=${this.handleMenuItemClick}
+          role="menuitemcheckbox"
+          aria-checked=${this.coverMode ? 'true' : 'false'}
+          aria-disabled=${isCoverModeDisabled ? 'true' : 'false'}
+          @click=${this.handleCoverModeToggleClick}
+          title="${isCoverModeDisabled
+            ? 'Cover/Contain mode is disabled for recorded tags and uploaded images'
+            : this.coverMode
+              ? 'Switch to contain mode (show full image)'
+              : 'Switch to cover mode (fill viewport)'}"
         >
           <span>${this.coverMode ? 'Cover' : 'Contain'} Mode</span>
-          <div
+          <span
             class="toggle-switch ${this.coverMode
               ? 'active'
               : ''} ${isCoverModeDisabled ? 'disabled' : ''}"
-            @click=${this.handleCoverModeToggleClick}
-            title="${isCoverModeDisabled
-              ? 'Cover/Contain mode is disabled for recorded tags and uploaded images'
-              : this.coverMode 
-                ? 'Switch to contain mode (show full image)'
-                : 'Switch to cover mode (fill viewport)'}"
-          ></div>
-        </div>
+          ></span>
+        </button>
         ${this.availableCameras.length > 1
           ? html`
-              <div 
-                class="menu-item ${!isCameraSwitchEnabled ? 'disabled' : ''}" 
+              <button
+                class="menu-item ${!isCameraSwitchEnabled ? 'disabled' : ''}"
+                role="menuitem"
+                aria-disabled=${!isCameraSwitchEnabled ? 'true' : 'false'}
                 @click=${this.handleSwitchCamera}
-                title="${!isCameraSwitchEnabled 
-                  ? 'Camera switching is only available in live mode' 
+                title="${!isCameraSwitchEnabled
+                  ? 'Camera switching is only available in live mode'
                   : 'Switch camera'}"
               >
                 <span>Switch Camera</span>
                 <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor;">
                   <path d="M20 4h-3.17L15 2H9L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm3-4.5h-2v2l-3-3 3-3v2h2v2z"/>
                 </svg>
-              </div>
+              </button>
             `
           : ''}
-        <div 
-          class="menu-item ${isImageSelectionDisabled ? 'disabled' : ''}" 
-          @click=${isImageSelectionDisabled ? undefined : this.handleSelectImage}
+        <button
+          class="menu-item ${isImageSelectionDisabled ? 'disabled' : ''}"
+          role="menuitem"
+          aria-disabled=${isImageSelectionDisabled ? 'true' : 'false'}
+          @click=${isImageSelectionDisabled ? this.handleMenuItemClick : this.handleSelectImage}
           title="${isImageSelectionDisabled ? 'Image selection disabled during recording/playback' : 'Select an image file'}"
         >
           <span>Select Image</span>
-        </div>
-        <div 
-          class="menu-item ${isImageSelectionDisabled ? 'disabled' : ''}" 
-          @click=${isImageSelectionDisabled ? undefined : this.handleViewExample}
+        </button>
+        <button
+          class="menu-item ${isImageSelectionDisabled ? 'disabled' : ''}"
+          role="menuitem"
+          aria-disabled=${isImageSelectionDisabled ? 'true' : 'false'}
+          @click=${isImageSelectionDisabled ? this.handleMenuItemClick : this.handleViewExample}
           title="${isImageSelectionDisabled ? 'View example disabled during recording/playback' : 'View example AprilTag image'}"
         >
           <span>View Example</span>
-        </div>
-        <div 
-          class="menu-item" 
+        </button>
+        <button
+          class="menu-item"
+          role="menuitem"
           @click=${this.handleWhatAreAprilTags}
           title="Learn about AprilTags"
         >
           <span>What are AprilTags?</span>
-        </div>
+        </button>
       </div>
     `;
   }

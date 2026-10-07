@@ -8,11 +8,14 @@
     "build": "vite build",
     "preview": "vite preview",
     "build-wasm": "nix run .#build",
-    "typecheck": "tsc --noEmit",
-    "format": "prettier --write ."
+    "typecheck": "tsc --noEmit && tsc --noEmit -p e2e",
+    "format": "prettier --write .",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/emscripten": "^1.40.1",
+    "@types/node": "^22.20.5",
     "prettier": "^3.6.2",
     "typescript": "^5.8.3",
     "vite": "^5.0.0"

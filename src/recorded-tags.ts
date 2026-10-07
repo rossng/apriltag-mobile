@@ -146,10 +146,13 @@ export class RecordedTags extends LitElement {
       ${this.tagIds.length === 0
         ? html`<div class="empty-state">No tags detected during recording</div>`
         : html`
-            <div class="tags-container">
+            <div class="tags-container" role="list" aria-label="Recorded tags">
               ${compressedTags.map(
                 (item) => html`
-                  <div class="tag-item ${item.isRange ? 'range' : ''}">
+                  <div
+                    class="tag-item ${item.isRange ? 'range' : ''}"
+                    role="listitem"
+                  >
                     ${item.display}
                   </div>
                 `
@@ -159,7 +162,13 @@ export class RecordedTags extends LitElement {
 
       <div class="spacer"></div>
       
-      <button class="close-button" @click=${this.close}>×</button>
+      <button
+        class="close-button"
+        aria-label="Close recorded tags"
+        @click=${this.close}
+      >
+        ×
+      </button>
     `;
   }
 
