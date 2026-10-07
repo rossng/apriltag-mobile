@@ -81,9 +81,9 @@
         };
 
         # Copy the build artifacts into the source tree:
-        #   - public/        is served by Vite at runtime (license texts go
-        #                    here so the deployed binary distribution carries
-        #                    the required BSD attribution).
+        #   - public/        gets the license texts, which Vite copies
+        #                    verbatim into the deployed site so the binary
+        #                    distribution carries the required BSD attribution.
         #   - src/apriltag/  is consumed by Vite at bundle time: the .wasm
         #                    must sit next to apriltag_wasm.js so Vite can
         #                    resolve the new URL('apriltag_wasm.wasm',
@@ -92,8 +92,6 @@
         installWasm = pkgs.writeShellScript "install-apriltag-wasm" ''
           set -euo pipefail
           mkdir -p public src/apriltag
-          install -m 644 ${apriltagWasm}/apriltag_wasm.js                  public/apriltag_wasm.js
-          install -m 644 ${apriltagWasm}/apriltag_wasm.wasm                public/apriltag_wasm.wasm
           install -m 644 ${apriltagWasm}/LICENSE.apriltag                  public/LICENSE.apriltag
           install -m 644 ${apriltagWasm}/LICENSE.apriltag-js-standalone    public/LICENSE.apriltag-js-standalone
           install -m 644 ${apriltagWasm}/NOTICE.md                         public/NOTICE.md
