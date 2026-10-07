@@ -1,0 +1,21 @@
+name: Setup
+description: Build the AprilTag WASM module with Nix and install npm dependencies
+
+runs:
+  using: composite
+  steps:
+    - uses: cachix/install-nix-action@v31
+
+    - name: Build WASM
+      shell: bash
+      run: nix run .#build
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: '24'
+        cache: 'npm'
+
+    - name: Install dependencies
+      shell: bash
+      run: npm ci
