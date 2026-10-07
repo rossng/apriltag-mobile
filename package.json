@@ -17,7 +17,7 @@
     "@types/emscripten": "^1.41.6",
     "@types/node": "^24.19.1",
     "prettier": "^3.9.9",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "vite": "^8.3.3"
   },
   "repository": {
