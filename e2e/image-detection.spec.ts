@@ -15,4 +15,7 @@ test('warns about duplicate markers', async ({ app, imageFile }) => {
   await app.uploadImage(await imageFile(tagGrid([5, 5, 6])));
   await app.expectDetectedTags([5, 5, 6]);
   await app.expectDuplicateWarning('Duplicate marker: 5');
+
+  await app.closeImage();
+  await app.expectDuplicateWarning(null);
 });

@@ -3,7 +3,14 @@ import type { Scene } from './scene';
 export interface HarnessOptions {
   /** Tag bitmaps as data URLs, keyed by `family:id`. */
   tagImages: Record<string, string>;
-  camera: { width: number; height: number; fps: number };
+  camera: FakeCameraOptions & { width: number; height: number; fps: number };
+}
+
+export interface FakeCameraOptions {
+  /** How many camera devices to report. They all show the same scene. */
+  devices: number;
+  /** Rejects camera access as if the user denied permission. */
+  denied: boolean;
 }
 
 export interface BrowserHarness {
@@ -83,17 +90,24 @@ export function installBrowserHarness({ tagImages, camera }: HarnessOptions) {
     }
   }, 1000 / camera.fps);
 
-  const fakeDevice = {
-    deviceId: 'fake-camera',
-    groupId: 'fake-camera',
-    kind: 'videoinput',
-    label: 'Fake camera',
-    toJSON() {
-      return this;
-    },
-  } as MediaDeviceInfo;
+  const fakeDevices = Array.from(
+    { length: camera.devices },
+    (_, i) =>
+      ({
+        deviceId: `fake-camera-${i}`,
+        groupId: `fake-camera-${i}`,
+        kind: 'videoinput',
+        label: `Fake camera ${i}`,
+        toJSON() {
+          return this;
+        },
+      }) as MediaDeviceInfo
+  );
 
   navigator.mediaDevices.getUserMedia = async (constraints) => {
+    if (camera.denied) {
+      throw new DOMException('Permission denied', 'NotAllowedError');
+    }
     if (!constraints?.video) {
       throw new DOMException(
         'Fake camera only provides video',
@@ -102,7 +116,7 @@ export function installBrowserHarness({ tagImages, camera }: HarnessOptions) {
     }
     return cameraCanvas.captureStream(camera.fps);
   };
-  navigator.mediaDevices.enumerateDevices = async () => [fakeDevice];
+  navigator.mediaDevices.enumerateDevices = async () => fakeDevices;
 
   window.__e2e = {
     async renderPng(scene) {

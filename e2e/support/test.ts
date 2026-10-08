@@ -1,12 +1,19 @@
 import { test as base } from '@playwright/test';
 import { AprilTagApp, type ImageFile } from './app-driver';
-import { installBrowserHarness } from './browser-harness';
+import {
+  installBrowserHarness,
+  type FakeCameraOptions,
+} from './browser-harness';
 import { loadTagImages, type Scene } from './scene';
 
 export { expect } from '@playwright/test';
 export { tagGrid } from './scene';
 
 const tagImages = loadTagImages();
+
+interface Options {
+  fakeCamera: FakeCameraOptions;
+}
 
 interface Fixtures {
   app: AprilTagApp;
@@ -20,11 +27,13 @@ export interface FakeCamera {
   show(scene: Scene): Promise<void>;
 }
 
-export const test = base.extend<Fixtures>({
-  page: async ({ page }, use) => {
+export const test = base.extend<Fixtures & Options>({
+  fakeCamera: [{ devices: 1, denied: false }, { option: true }],
+
+  page: async ({ page, fakeCamera }, use) => {
     await page.addInitScript(installBrowserHarness, {
       tagImages,
-      camera: { width: 1280, height: 720, fps: 15 },
+      camera: { width: 1280, height: 720, fps: 15, ...fakeCamera },
     });
     await use(page);
   },

@@ -15,9 +15,19 @@ export interface ImageFile {
 export class AprilTagApp {
   constructor(readonly page: Page) {}
 
-  /** Loads the app and waits until it is ready to detect. */
-  async open(): Promise<void> {
+  /**
+   * Loads the app and waits until it is ready to detect from the camera, or
+   * with `camera: false`, just until it is usable (e.g. camera denied).
+   */
+  async open({ camera = true }: { camera?: boolean } = {}): Promise<void> {
     await this.page.goto('./');
+    await expect(
+      camera ? this.button('Pause') : this.menuButton()
+    ).toBeEnabled();
+  }
+
+  async reload(): Promise<void> {
+    await this.page.reload();
     await expect(this.button('Pause')).toBeEnabled();
   }
 
@@ -40,6 +50,13 @@ export class AprilTagApp {
     await this.button('Stop recording').click();
   }
 
+  async closeRecordedTags(): Promise<void> {
+    await this.button('Close recorded tags').click();
+    await expect(
+      this.page.getByRole('list', { name: 'Recorded tags' })
+    ).toBeHidden();
+  }
+
   async closeImage(): Promise<void> {
     await this.button('Close image').click();
     await expect(this.button('Pause')).toBeVisible();
@@ -55,6 +72,37 @@ export class AprilTagApp {
     }
     await expect(toggle).toBeChecked({ checked: enabled });
     await this.closeMenu();
+  }
+
+  async switchCamera(): Promise<void> {
+    await this.openMenu();
+    await this.page.getByRole('menuitem', { name: 'Switch Camera' }).click();
+  }
+
+  async viewExample(): Promise<void> {
+    await this.openMenu();
+    await this.page.getByRole('menuitem', { name: 'View Example' }).click();
+    await expect(this.button('Close image')).toBeVisible();
+  }
+
+  async selectFamily(family: string): Promise<void> {
+    await this.page.locator('family-selector .dropdown').click();
+    await this.page
+      .locator('family-selector .menu-item', { hasText: `${family} (` })
+      .click();
+    await this.expectFamily(family);
+  }
+
+  async expectFamily(family: string): Promise<void> {
+    await expect(
+      this.page.locator('family-selector .dropdown-label')
+    ).toHaveText(family);
+  }
+
+  async expectFamilySelectable(selectable: boolean): Promise<void> {
+    await expect(this.page.locator('family-selector .dropdown')).toHaveClass(
+      selectable ? /^(?!.*\bdisabled\b)/ : /\bdisabled\b/
+    );
   }
 
   async uploadImage(file: ImageFile): Promise<void> {
@@ -90,12 +138,24 @@ export class AprilTagApp {
     }
   }
 
-  async expectDuplicateWarning(text: string | RegExp): Promise<void> {
-    await expect(this.page.getByRole('alert')).toHaveText(text);
+  async expectDuplicateWarning(text: string | RegExp | null): Promise<void> {
+    const alert = this.page.getByRole('alert');
+    if (text === null) await expect(alert).toBeHidden();
+    else await expect(alert).toHaveText(text);
+  }
+
+  async expectStatus(text: string | RegExp): Promise<void> {
+    await expect(this.page.getByRole('status')).toHaveText(text);
   }
 
   /** Asserts the entries shown in the recorded-tags summary, e.g. `['0-7']`. */
   async expectRecordedTags(entries: string[]): Promise<void> {
+    if (entries.length === 0) {
+      await expect(
+        this.page.getByText('No tags detected during recording')
+      ).toBeVisible();
+      return;
+    }
     await expect(
       this.page
         .getByRole('list', { name: 'Recorded tags' })
