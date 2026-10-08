@@ -4,11 +4,11 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
-    "experimentalDecorators": true,
-    "useDefineForClassFields": false,
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
     "skipLibCheck": true,
     "types": ["vite/client"],
     "noEmit": true
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src"]
 }

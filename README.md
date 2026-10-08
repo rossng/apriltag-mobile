@@ -3,7 +3,7 @@
 A mobile-first web app for detecting AprilTags using your device's camera. The
 detector is the upstream [AprilRobotics/apriltag](https://github.com/AprilRobotics/apriltag)
 C library compiled to WebAssembly via Emscripten, driven from TypeScript /
-[Lit](https://lit.dev/).
+[Solid](https://www.solidjs.com/).
 
 ## Local Development
 
