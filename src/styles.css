@@ -52,7 +52,7 @@ svg {
   fill: currentColor;
 }
 
-apriltag-app {
+#app {
   position: fixed;
   inset: 0;
   display: flex;

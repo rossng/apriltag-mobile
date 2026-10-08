@@ -60,3 +60,14 @@ test('shows the example image with its tag family', async ({ app }) => {
     30214, 30228, 30229, 30230, 30241,
   ]);
 });
+
+test('ignores an unknown saved family', async ({ app, camera, page }) => {
+  await page.addInitScript(() =>
+    localStorage.setItem('selectedFamily', 'tag99h99')
+  );
+  await app.open();
+  await app.expectFamily('tag36h11');
+
+  await camera.show(tagGrid([1]));
+  await app.expectDetectedTags([1]);
+});

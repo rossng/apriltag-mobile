@@ -18,7 +18,8 @@
     "@types/node": "^24.19.1",
     "prettier": "^3.9.9",
     "typescript": "^7.0.2",
-    "vite": "^8.3.3"
+    "vite": "^8.3.3",
+    "vite-plugin-solid": "^2.11.14"
   },
   "repository": {
     "type": "git",
@@ -32,6 +33,6 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "lit": "^3.3.3"
+    "solid-js": "^1.9.17"
   }
 }
