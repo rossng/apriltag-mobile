@@ -8,8 +8,8 @@ C library compiled to WebAssembly via Emscripten, driven from TypeScript /
 ## Local Development
 
 The whole build is driven by Nix. `apriltag-src` is fetched as a flake input
-(pinned in `flake.lock`) and compiled to WASM alongside the wrapper sources in
-`wasm/src/`.
+(pinned in `flake.lock`) and compiled to WASM alongside the small wrapper in
+`wasm/apriltag_wasm.c`.
 
 ```bash
 git clone https://github.com/rossng/apriltag-mobile.git
@@ -33,14 +33,9 @@ nix flake update apriltag-src
 
 ## License
 
-The mobile app code is MIT licensed. The compiled WebAssembly module links in
-two BSD-licensed upstream projects:
-
-- [AprilTag](https://github.com/AprilRobotics/apriltag) (BSD-2-Clause) — Regents
-  of the University of Michigan
-- [apriltag-js-standalone](https://github.com/arenaxr/apriltag-js-standalone)
-  wrapper (BSD-3-Clause) — CONIX Research Center
-
-See [`wasm/NOTICE.md`](./wasm/NOTICE.md) for provenance details and pointers to
-both license texts. The build copies both into `public/` so the deployed site
-ships them alongside the WASM binary.
+The mobile app code, including the WebAssembly wrapper in `wasm/`, is MIT
+licensed. The compiled WebAssembly module links in the BSD-2-Clause licensed
+[AprilTag](https://github.com/AprilRobotics/apriltag) library (Regents of the
+University of Michigan); see [`wasm/NOTICE.md`](./wasm/NOTICE.md). The build
+copies its license text into `public/` so the deployed site ships it alongside
+the WASM binary.

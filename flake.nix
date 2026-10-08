@@ -23,8 +23,8 @@
         pkgs = nixpkgs.legacyPackages.${system};
 
         # Builds the AprilTag detector to WebAssembly, linking the
-        # AprilRobotics/apriltag C sources together with the Emscripten wrapper
-        # in ./wasm/src. Produces apriltag_wasm.{js,wasm,d.ts}.
+        # AprilRobotics/apriltag C sources together with the wrapper in
+        # ./wasm/apriltag_wasm.c. Produces apriltag_wasm.{js,wasm,d.ts}.
         apriltagWasm = pkgs.stdenv.mkDerivation {
           pname = "apriltag-wasm";
           version = builtins.substring 0 7 apriltag-src.rev;
@@ -40,28 +40,18 @@
             runHook preBuild
 
             export HOME=$TMPDIR
-            mkdir -p apriltag
-            cp -r ${apriltag-src}/. apriltag/
-            cp -r ${./wasm/src} src
-            chmod -R u+w apriltag src
-
-            APRILTAG_SRCS=$(ls apriltag/*.c apriltag/common/*.c | grep -v apriltag_pywrap.c)
-            WRAPPER_SRCS="src/apriltag_js.c src/str_json.c"
-
             mkdir -p out
             emcc -Os \
               -s MODULARIZE=1 \
-              -s 'EXPORT_NAME="AprilTagWasm"' \
-              -s WASM=1 \
+              -s EXPORT_ES6 \
               -s ENVIRONMENT=web \
               -s ALLOW_MEMORY_GROWTH=1 \
-              -s EXPORTED_FUNCTIONS="['_free']" \
-              -s EXPORTED_RUNTIME_METHODS='["cwrap", "getValue", "setValue", "HEAPU8"]' \
-              -s EXPORT_ES6 \
-              -Iapriltag \
+              -s EXPORTED_RUNTIME_METHODS='["ccall", "HEAPU8", "HEAPF64"]' \
+              -I${apriltag-src} \
               --emit-tsd apriltag_wasm.d.ts \
               -o out/apriltag_wasm.js \
-              $APRILTAG_SRCS $WRAPPER_SRCS
+              $(ls ${apriltag-src}/*.c ${apriltag-src}/common/*.c | grep -v apriltag_pywrap.c) \
+              ${./wasm/apriltag_wasm.c}
 
             runHook postBuild
           '';
@@ -73,8 +63,6 @@
 
             # BSD attribution for the binary distribution.
             install -m 644 ${apriltag-src}/LICENSE.md        $out/LICENSE.apriltag
-            install -m 644 ${./wasm/LICENSE.apriltag-js-standalone} \
-              $out/LICENSE.apriltag-js-standalone
             install -m 644 ${./wasm/NOTICE.md}               $out/NOTICE.md
 
             runHook postInstall
@@ -82,7 +70,7 @@
         };
 
         # Copy the build artifacts into the source tree:
-        #   - public/        gets the license texts, which Vite copies
+        #   - public/        gets the license text, which Vite copies
         #                    verbatim into the deployed site so the binary
         #                    distribution carries the required BSD attribution.
         #   - src/apriltag/  is consumed by Vite at bundle time: the .wasm
@@ -94,7 +82,6 @@
           set -euo pipefail
           mkdir -p public src/apriltag
           install -m 644 ${apriltagWasm}/LICENSE.apriltag                  public/LICENSE.apriltag
-          install -m 644 ${apriltagWasm}/LICENSE.apriltag-js-standalone    public/LICENSE.apriltag-js-standalone
           install -m 644 ${apriltagWasm}/NOTICE.md                         public/NOTICE.md
           install -m 644 ${apriltagWasm}/apriltag_wasm.js                  src/apriltag/apriltag_wasm.js
           install -m 644 ${apriltagWasm}/apriltag_wasm.wasm                src/apriltag/apriltag_wasm.wasm

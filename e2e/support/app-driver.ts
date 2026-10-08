@@ -86,23 +86,16 @@ export class AprilTagApp {
   }
 
   async selectFamily(family: string): Promise<void> {
-    await this.page.locator('family-selector .dropdown').click();
-    await this.page
-      .locator('family-selector .menu-item', { hasText: `${family} (` })
-      .click();
+    await this.familySelect().selectOption(family);
     await this.expectFamily(family);
   }
 
   async expectFamily(family: string): Promise<void> {
-    await expect(
-      this.page.locator('family-selector .dropdown-label')
-    ).toHaveText(family);
+    await expect(this.familySelect()).toHaveValue(family);
   }
 
   async expectFamilySelectable(selectable: boolean): Promise<void> {
-    await expect(this.page.locator('family-selector .dropdown')).toHaveClass(
-      selectable ? /^(?!.*\bdisabled\b)/ : /\bdisabled\b/
-    );
+    await expect(this.familySelect()).toBeEnabled({ enabled: selectable });
   }
 
   async uploadImage(file: ImageFile): Promise<void> {
@@ -167,23 +160,23 @@ export class AprilTagApp {
     return this.page.getByRole('button', { name, exact: true });
   }
 
+  private familySelect() {
+    return this.page.getByRole('combobox', { name: 'Tag family' });
+  }
+
   private menuButton() {
     return this.page.getByRole('button', { name: 'More options' });
   }
 
   private async openMenu(): Promise<void> {
-    const menuButton = this.menuButton();
-    if ((await menuButton.getAttribute('aria-expanded')) !== 'true') {
-      await menuButton.click();
-    }
-    await expect(this.page.getByRole('menu')).toBeVisible();
+    const menu = this.page.getByRole('menu');
+    if (!(await menu.isVisible())) await this.menuButton().click();
+    await expect(menu).toBeVisible();
   }
 
   private async closeMenu(): Promise<void> {
-    const menuButton = this.menuButton();
-    if ((await menuButton.getAttribute('aria-expanded')) === 'true') {
-      await menuButton.click();
-    }
-    await expect(this.page.getByRole('menu')).toBeHidden();
+    const menu = this.page.getByRole('menu');
+    if (await menu.isVisible()) await this.menuButton().click();
+    await expect(menu).toBeHidden();
   }
 }
