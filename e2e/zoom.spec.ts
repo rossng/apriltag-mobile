@@ -14,7 +14,7 @@ test('zooms into an image with the zoom buttons', async ({
   // Zooming only changes the view, not what's detected.
   await app.expectDetectedTags([0, 1, 2, 3]);
 
-  await app.fitToScreen();
+  await app.resetZoom();
   await app.expectZoom('1×');
 });
 

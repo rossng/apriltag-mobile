@@ -31,6 +31,7 @@ import {
   type Scene,
   type Size,
 } from './canvas';
+import { createCameraControls } from './camera';
 import { attachGestures } from './gestures';
 import {
   MAX_ZOOM,
@@ -193,6 +194,29 @@ export function App() {
     );
   });
 
+  const camera = createCameraControls();
+  const live = () => view().kind === 'live' || view().kind === 'collecting';
+  /** Whether zooming zooms the camera rather than a still picture. */
+  const cameraZoomable = () => live() && !!camera.range();
+
+  /** The zoom level shown, relative to fitting the screen or the camera's widest. */
+  const zoomLevel = () => (still() ? zoom().k : camera.zoom());
+  const canZoomIn = () =>
+    still() ? zoom().k < MAX_ZOOM : camera.zoom() < camera.range()!.max;
+  const canZoomOut = () =>
+    still() ? zoom().k > 1 : camera.zoom() > camera.range()!.min;
+
+  /** Zooms the still picture or the camera, whichever is showing. */
+  function zoomViewBy(factor: number, at?: Point) {
+    if (still()) zoomStill(factor, at);
+    else camera.zoomBy(factor);
+  }
+
+  function resetZoom() {
+    if (still()) setZoom(NO_ZOOM);
+    else camera.resetZoom();
+  }
+
   /** Zooms the still picture, about the middle of the view by default. */
   function zoomStill(
     factor: number,
@@ -235,6 +259,7 @@ export function App() {
     stream?.getTracks().forEach((track) => track.stop());
     setFrameSize(null);
     setCameraError('');
+    camera.use();
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -246,6 +271,7 @@ export function App() {
         },
       });
       video.srcObject = stream;
+      camera.use(stream.getVideoTracks()[0]);
       watchFrames();
       const devices = await navigator.mediaDevices.enumerateDevices();
       setCameras(devices.filter((d) => d.kind === 'videoinput'));
@@ -278,12 +304,12 @@ export function App() {
     resize.observe(canvas);
 
     const detachGestures = attachGestures(canvas, {
-      zoomable: () => !!still(),
+      zoomable: () => !!still() || cameraZoomable(),
       pannable: () => !!still(),
-      zoom: zoomStill,
+      zoom: zoomViewBy,
       pan: panStill,
       toggleZoom: (at) =>
-        zoom().k > 1 ? setZoom(NO_ZOOM) : zoomStill(2.5, at),
+        canZoomOut() ? resetZoom() : zoomViewBy(still() ? 2.5 : 2, at),
       point: (at) => {
         const view = shown();
         setFocus(
@@ -304,10 +330,11 @@ export function App() {
     });
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (!still() || e.ctrlKey || e.metaKey || e.altKey) return;
-      if (e.key === '+' || e.key === '=') zoomStill(1.5);
-      else if (e.key === '-') zoomStill(1 / 1.5);
-      else if (e.key === '0') setZoom(NO_ZOOM);
+      if (!(still() || cameraZoomable())) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === '+' || e.key === '=') zoomViewBy(1.5);
+      else if (e.key === '-') zoomViewBy(1 / 1.5);
+      else if (e.key === '0') resetZoom();
     };
     document.addEventListener('keydown', onKeyDown);
 
@@ -581,29 +608,51 @@ export function App() {
           data-testid="picture"
           classList={{ still: !!still(), zoomed: zoom().k > 1 }}
         />
-        <Show when={still()}>
-          <div class="zoom-controls" role="group" aria-label="Zoom">
-            <button
-              aria-label="Zoom in"
-              disabled={zoom().k >= MAX_ZOOM}
-              onClick={() => zoomStill(1.5)}
-            >
-              {ICONS.plus()}
-            </button>
-            <button
-              aria-label="Fit to screen"
-              disabled={zoom().k === 1}
-              onClick={() => setZoom(NO_ZOOM)}
-            >
-              {formatZoom(zoom().k)}
-            </button>
-            <button
-              aria-label="Zoom out"
-              disabled={zoom().k === 1}
-              onClick={() => zoomStill(1 / 1.5)}
-            >
-              {ICONS.minus()}
-            </button>
+        <Show
+          when={
+            still() ||
+            (live() &&
+              frameSize() &&
+              (camera.range() || camera.torch() !== null))
+          }
+        >
+          <div
+            class="zoom-controls"
+            role="group"
+            aria-label={still() ? 'Zoom' : 'Camera'}
+          >
+            <Show when={!still() && camera.torch() !== null}>
+              <button
+                aria-label="Torch"
+                aria-pressed={!!camera.torch()}
+                onClick={camera.toggleTorch}
+              >
+                {ICONS.torch()}
+              </button>
+            </Show>
+            <Show when={still() || camera.range()}>
+              <button
+                aria-label="Zoom in"
+                disabled={!canZoomIn()}
+                onClick={() => zoomViewBy(1.5)}
+              >
+                {ICONS.plus()}
+              </button>
+              <button
+                aria-label="Reset zoom"
+                disabled={!canZoomOut()}
+                onClick={resetZoom}
+              >
+                {formatZoom(zoomLevel())}
+              </button>
+              <button
+                aria-label="Zoom out"
+                disabled={!canZoomOut()}
+                onClick={() => zoomViewBy(1 / 1.5)}
+              >
+                {ICONS.minus()}
+              </button>
+            </Show>
           </div>
         </Show>
         <Show when={view().kind === 'live' && !frameSize()}>
@@ -817,7 +866,7 @@ function Results(props: {
   );
 }
 
-/** e.g. 2.5×, relative to fitting the screen. */
+/** e.g. 2.5×. */
 function formatZoom(k: number): string {
   return `${k < 10 ? Number(k.toFixed(1)) : Math.round(k)}×`;
 }
@@ -930,6 +979,16 @@ const ICONS = {
       stroke="currentColor"
       stroke-width="1.5"
       stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  )),
+  // Feather's zap (MIT licence).
+  torch: icon(() => (
+    <path
+      d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
       stroke-linejoin="round"
     />
   )),

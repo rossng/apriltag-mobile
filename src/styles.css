@@ -475,8 +475,8 @@ canvas.zoomed:active {
   display: flex;
   flex-direction: column;
   transform: translateY(-50%);
-  background: var(--surface-glass);
-  backdrop-filter: blur(12px);
+  /* Solid, as small controls over a busy picture are hard to read. */
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 999px;
 }
@@ -494,6 +494,11 @@ canvas.zoomed:active {
 
 .zoom-controls button:not(:disabled):hover {
   color: var(--cyan);
+}
+
+.zoom-controls [aria-pressed='true'] {
+  color: var(--amber);
+  filter: drop-shadow(0 0 6px rgba(255, 181, 71, 0.8));
 }
 
 .zoom-controls button:disabled {
