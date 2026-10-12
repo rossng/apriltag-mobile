@@ -6,9 +6,10 @@ test('cannot change family while recording or viewing results', async ({
 }) => {
   await app.open();
   await app.setRecordMode(true);
-  await camera.show(tagGrid([1]));
 
   await app.startRecording();
+  await camera.show(tagGrid([1]));
+  await app.expectDetectedTags([1]);
   await app.expectFamilySelectable(false);
 
   await app.stopRecording();
@@ -22,8 +23,8 @@ test('cannot change family while recording or viewing results', async ({
 test('turning record mode off ends the recording', async ({ app, camera }) => {
   await app.open();
   await app.setRecordMode(true);
-  await camera.show(tagGrid([2, 4, 5]));
   await app.startRecording();
+  await camera.show(tagGrid([2, 4, 5]));
   await app.expectDetectedTags([2, 4, 5]);
 
   await app.setRecordMode(false);
