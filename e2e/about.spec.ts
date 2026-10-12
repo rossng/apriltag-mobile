@@ -9,10 +9,14 @@ test('the about panel describes the app and links to its source', async ({
   await expect(
     about.getByRole('heading', { name: 'Online AprilTag detector' })
   ).toBeVisible();
-  await expect(about.getByRole('link', { name: 'GitHub' })).toHaveAttribute(
+  const github = about.getByRole('link', { name: /^GitHub/ });
+  await expect(github).toHaveAttribute(
     'href',
     'https://github.com/rossng/apriltag-mobile'
   );
+  // Opens in a new tab, so a scan in progress isn't lost.
+  await expect(github).toHaveAttribute('target', '_blank');
+  await expect(github).toHaveAccessibleName('GitHub (opens in a new tab)');
 
   await page.keyboard.press('Escape');
   await expect(about).toBeHidden();
