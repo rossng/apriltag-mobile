@@ -365,9 +365,18 @@ h1 svg {
   background: var(--cyan-soft);
 }
 
-#menu > a::after {
+/* Marks links that open in a new tab, so scanning isn't interrupted. */
+a[target='_blank']::after {
   content: '↗';
+  content: '↗' / '(opens in a new tab)';
   color: var(--text-dim);
+}
+
+/* Inline-block keeps the arrow out of the link's underline. */
+#about a[target='_blank']::after {
+  display: inline-block;
+  margin-left: 2px;
+  font-size: 0.85em;
 }
 
 /* Toggle switches. */
