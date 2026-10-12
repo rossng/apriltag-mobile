@@ -9,8 +9,20 @@ import {
   Show,
   type JSX,
 } from 'solid-js';
-import { detect, FAMILIES, findDuplicateIds, type Detection } from './detector';
-import { drawOverlay, pixels } from './canvas';
+import {
+  detect,
+  FAMILIES,
+  findDuplicateIds,
+  type Detection,
+  type Point,
+} from './detector';
+import {
+  drawOverlay,
+  LABEL_SIZES,
+  pixels,
+  toImagePoint,
+  type LabelSize,
+} from './canvas';
 
 type View =
   | { kind: 'live' }
@@ -23,6 +35,7 @@ type Size = { width: number; height: number };
 
 const FAMILY_KEY = 'selectedFamily';
 const DUPLICATES_KEY = 'detectDuplicates';
+const LABEL_SIZE_KEY = 'labelSize';
 const EXAMPLE = { url: 'sample.jpg', family: 'tagStandard52h13' };
 
 export function App() {
@@ -36,6 +49,12 @@ export function App() {
     localStorage.getItem(DUPLICATES_KEY) === 'true'
   );
   const [cover, setCover] = createSignal(true);
+  const savedSize = localStorage.getItem(LABEL_SIZE_KEY) ?? '';
+  const [labelSize, setLabelSize] = createSignal<LabelSize>(
+    savedSize in LABEL_SIZES ? (savedSize as LabelSize) : 'auto'
+  );
+  /** Where the user is pointing, to bring that tag's ID to the front. */
+  const [focus, setFocus] = createSignal<Point | null>(null);
   const [liveDetections, setLiveDetections] = createSignal<Detection[]>([]);
   /** Camera frame size, or null until the camera has produced a frame. */
   const [frameSize, setFrameSize] = createSignal<Size | null>(null, {
@@ -75,13 +94,32 @@ export function App() {
   createEffect(() =>
     localStorage.setItem(DUPLICATES_KEY, String(detectDuplicates()))
   );
+  createEffect(() => localStorage.setItem(LABEL_SIZE_KEY, labelSize()));
+
+  // A tapped point means nothing once the picture changes.
+  createEffect(() => {
+    view();
+    setFocus(null);
+  });
 
   createEffect(() => {
-    cover(); // The label size depends on object-fit.
+    cover(); // Label sizes depend on object-fit.
     const image = still();
     const size = image ?? frameSize() ?? { width: 0, height: 0 };
-    drawOverlay(canvas, detections(), duplicates(), size, image);
+    drawOverlay(canvas, detections(), size, {
+      image,
+      duplicateIds: duplicates(),
+      labelSize: labelSize(),
+      focus: focus(),
+    });
   });
+
+  /** Focuses the tag under the mouse, or under a tap on touch screens. */
+  const pointAt = (hover: boolean) => (e: PointerEvent) => {
+    if ((e.pointerType === 'mouse') === hover) {
+      setFocus(toImagePoint(canvas, e.clientX, e.clientY));
+    }
+  };
 
   /** Feeds every new camera frame to the detector while in a live view. */
   function watchFrames() {
@@ -262,15 +300,6 @@ export function App() {
           </button>
           <button
             role="menuitemcheckbox"
-            aria-checked={cover()}
-            disabled={view().kind === 'image' || view().kind === 'results'}
-            title="Crop the camera view to fill the screen. Turn off to see the whole frame."
-            onClick={() => setCover(!cover())}
-          >
-            Fill Screen
-          </button>
-          <button
-            role="menuitemcheckbox"
             aria-checked={detectDuplicates()}
             title="Warn when the same tag ID appears more than once"
             onClick={() => setDetectDuplicates(!detectDuplicates())}
@@ -309,6 +338,14 @@ export function App() {
           >
             What are AprilTags?
           </a>
+          <button
+            role="menuitem"
+            onClick={closeMenuThen(() =>
+              document.getElementById('about')!.showPopover()
+            )}
+          >
+            About
+          </button>
         </div>
         <input
           ref={fileInput}
@@ -325,7 +362,13 @@ export function App() {
 
       <main classList={{ cover: cover() && view().kind !== 'image' }}>
         <video ref={video} autoplay muted playsinline />
-        <canvas ref={canvas} classList={{ still: !!still() }} />
+        <canvas
+          ref={canvas}
+          classList={{ still: !!still() }}
+          onPointerMove={pointAt(true)}
+          onPointerDown={pointAt(false)}
+          onPointerLeave={(e) => e.pointerType === 'mouse' && setFocus(null)}
+        />
         <div class="notices">
           <p role="status">{status()}</p>
           <Show when={duplicates().length}>
@@ -378,10 +421,58 @@ export function App() {
             <span>{button().label}</span>
           </Show>
         </button>
-        {/* The about panel is static content in index.html. */}
-        <button class="about" popovertarget="about" aria-label="About">
-          {ICONS.about()}
+        <button
+          class="view-button"
+          popovertarget="view-options"
+          aria-label="View options"
+        >
+          {ICONS.view()}
         </button>
+        <div
+          id="view-options"
+          class="panel"
+          popover
+          role="dialog"
+          aria-labelledby="view-options-title"
+        >
+          <h2 id="view-options-title">View Options</h2>
+          <label class="option">
+            <span>
+              Fill Screen
+              <small>Crop the camera view to fill the screen</small>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={cover()}
+              disabled={view().kind === 'image' || view().kind === 'results'}
+              onChange={(e) => setCover(e.currentTarget.checked)}
+            />
+          </label>
+          <fieldset>
+            <legend>Tag ID Size</legend>
+            <div class="segmented">
+              <For each={Object.entries(LABEL_SIZES)}>
+                {([value, name]) => (
+                  <label>
+                    <input
+                      type="radio"
+                      name="label-size"
+                      value={value}
+                      checked={labelSize() === value}
+                      onChange={() => setLabelSize(value as LabelSize)}
+                    />
+                    {name}
+                  </label>
+                )}
+              </For>
+            </div>
+          </fieldset>
+          <p class="hint">
+            <span class="hover">Hover over</span>
+            <span class="tap">Tap</span> a tag to bring its ID to the front.
+          </p>
+        </div>
       </footer>
     </>
   );
@@ -478,7 +569,13 @@ const ICONS = {
       <circle cx="12" cy="19" r="1.5" />
     </>
   )),
-  about: icon(() => (
-    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z" />
+  view: icon(() => (
+    <path
+      d="M4 7h9M17 7h3M4 17h3M11 17h9M15 4.5v5M9 14.5v5"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+    />
   )),
 };
