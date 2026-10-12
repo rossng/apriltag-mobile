@@ -1,8 +1,8 @@
 // Lets the app work offline. The build fills in PRECACHE with the app's
 // files and VERSION with a hash of them (see vite.config.js), so a new
 // deployment installs a new worker and cache.
-const VERSION = "6b04fde67198";
-const PRECACHE = ["./","assets/index-DAI2q4uB.js","assets/apriltag_wasm-va9wpvPW.wasm","assets/index-C1-9Hmr0.css","favicon.svg","manifest.webmanifest","sample.jpg","icons/icon-192.png","icons/icon-512.png","icons/maskable-512.png","icons/apple-touch-icon.png"];
+const VERSION = "ef3693244e67";
+const PRECACHE = ["./","assets/index-KYBizbpr.js","assets/apriltag_wasm-va9wpvPW.wasm","assets/index-C1-9Hmr0.css","favicon.svg","manifest.webmanifest","sample.jpg","icons/icon-192.png","icons/icon-512.png","icons/maskable-512.png","icons/apple-touch-icon.png"];
 const CACHE = `apriltag-detector-${VERSION}`;
 
 self.addEventListener('install', (event) => {
