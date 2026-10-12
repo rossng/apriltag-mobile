@@ -98,10 +98,32 @@ export class AprilTagApp {
 
   /** Opens the about panel and returns it. */
   async openAbout() {
-    await this.button('About').click();
+    await this.openMenu();
+    await this.page.getByRole('menuitem', { name: 'About' }).click();
     const about = this.page.locator('#about');
     await expect(about).toBeVisible();
     return about;
+  }
+
+  async setTagIdSize(size: string): Promise<void> {
+    await this.button('View options').click();
+    await this.tagIdSize(size).check();
+    await this.page.keyboard.press('Escape');
+    await expect(this.viewOptions()).toBeHidden();
+  }
+
+  async expectTagIdSize(size: string): Promise<void> {
+    await this.button('View options').click();
+    await expect(this.tagIdSize(size)).toBeChecked();
+    await this.page.keyboard.press('Escape');
+  }
+
+  private viewOptions() {
+    return this.page.getByRole('dialog', { name: 'View Options' });
+  }
+
+  private tagIdSize(size: string) {
+    return this.viewOptions().getByRole('radio', { name: size });
   }
 
   async uploadImage(file: ImageFile): Promise<void> {
