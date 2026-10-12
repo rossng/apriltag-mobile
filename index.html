@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <title>AprilTag Detector – Detect AprilTags Online in Your Browser</title>
     <meta
       name="description"
@@ -10,7 +13,9 @@
     />
     <link rel="canonical" href="https://www.rossng.eu/apriltag-mobile/" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <meta name="theme-color" content="#0a0a0f" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="theme-color" content="#06060c" />
 
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://www.rossng.eu/apriltag-mobile/" />
@@ -47,13 +52,13 @@
           "Live AprilTag detection from a phone or webcam camera",
           "AprilTag detection in uploaded images",
           "Tag families tag36h11, tag25h9, tag16h5, tagStandard41h12, tagStandard52h13, tagCircle21h7, tagCircle49h12 and tagCustom48h12",
-          "Record mode to collect every tag ID seen",
+          "Collect mode to gather every tag ID seen",
           "Duplicate tag ID warnings"
         ]
       }
     </script>
-    <script type="module" crossorigin src="./assets/index-CxcRIoel.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-BPvABXo6.css">
+    <script type="module" crossorigin src="./assets/index-DQxeYCUU.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-C1-9Hmr0.css">
   </head>
 
   <body>
@@ -73,7 +78,12 @@
       <h2>Online AprilTag detector</h2>
       <p>
         Detect
-        <a href="https://april.eecs.umich.edu/software/apriltag">AprilTags</a>
+        <a
+          target="_blank"
+          rel="noopener"
+          href="https://april.eecs.umich.edu/software/apriltag"
+          >AprilTags</a
+        >
         in your browser, with nothing to install. Point your phone or webcam at
         some tags to see their IDs and outlines live, or upload a photo to find
         every tag in it.
@@ -86,23 +96,33 @@
         </li>
         <li>Pause to freeze a frame, or switch family to re-check it.</li>
         <li>
-          Record mode collects every tag ID seen while you move the camera.
+          Collect mode gathers every tag ID seen while you move the camera.
         </li>
         <li>Optional warnings when the same tag ID appears twice.</li>
       </ul>
       <p>
         Everything runs on your device: camera video and images are never
         uploaded. Detection uses the
-        <a href="https://github.com/AprilRobotics/apriltag"
+        <a
+          target="_blank"
+          rel="noopener"
+          href="https://github.com/AprilRobotics/apriltag"
           >AprilRobotics AprilTag library</a
         >
         compiled to WebAssembly.
       </p>
       <p>
         Free and open source on
-        <a href="https://github.com/rossng/apriltag-mobile">GitHub</a>. Read
-        about
-        <a href="https://www.rossng.eu/posts/2025-08-03-apriltag-detector/"
+        <a
+          target="_blank"
+          rel="noopener"
+          href="https://github.com/rossng/apriltag-mobile"
+          >GitHub</a
+        >. Read about
+        <a
+          target="_blank"
+          rel="noopener"
+          href="https://www.rossng.eu/posts/2025-08-03-apriltag-detector/"
           >how it was built</a
         >.
       </p>
