@@ -71,3 +71,16 @@ test('ignores an unknown saved family', async ({ app, camera, page }) => {
   await camera.show(tagGrid([1]));
   await app.expectDetectedTags([1]);
 });
+
+test('the family picker works from the keyboard', async ({ app }) => {
+  await app.open();
+  await app.pressOnFamilyPicker('Enter');
+  await app.expectFamilyListOpen(true);
+  await app.pressOnFamilyPicker('End', 'Enter');
+  await app.expectFamilyListOpen(false);
+  await app.expectFamily('tagCustom48h12');
+
+  await app.pressOnFamilyPicker('ArrowDown', 'Home', 'Escape');
+  await app.expectFamilyListOpen(false);
+  await app.expectFamily('tagCustom48h12');
+});
