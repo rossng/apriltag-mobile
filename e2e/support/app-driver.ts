@@ -78,7 +78,7 @@ export class AprilTagApp {
   async viewExample(): Promise<void> {
     await this.openMenu();
     await this.page.getByRole('menuitem', { name: 'View Example' }).click();
-    await expect(this.button('Close image')).toBeVisible();
+    await expect(this.button('Close example')).toBeVisible();
   }
 
   async selectFamily(family: string): Promise<void> {

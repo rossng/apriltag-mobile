@@ -14,7 +14,8 @@ import { drawOverlay, pixels } from './canvas';
 
 type View =
   | { kind: 'live' }
-  | { kind: 'paused' | 'image'; image: ImageData }
+  | { kind: 'paused'; image: ImageData }
+  | { kind: 'image'; image: ImageData; example: boolean }
   | { kind: 'recording'; seen: Set<number> }
   | { kind: 'results'; ids: number[] };
 
@@ -63,12 +64,12 @@ export function App() {
     detections()
       .map((d) => d.id)
       .sort((a, b) => a - b);
-  const recorded = () => {
+  const results = () => {
     const v = view();
     return v.kind === 'results' ? v.ids : undefined;
   };
   const duplicates = () =>
-    detectDuplicates() && !recorded() ? findDuplicateIds(detections()) : [];
+    detectDuplicates() && !results() ? findDuplicateIds(detections()) : [];
 
   createEffect(() => localStorage.setItem(FAMILY_KEY, family()));
   createEffect(() =>
@@ -148,13 +149,16 @@ export function App() {
     });
   });
 
-  async function showImage(blob: Blob | Promise<Blob>, newFamily?: string) {
+  async function showImage(
+    blob: Blob | Promise<Blob>,
+    example?: typeof EXAMPLE
+  ) {
     try {
       const bitmap = await createImageBitmap(await blob);
       const image = pixels(bitmap, bitmap.width, bitmap.height);
       batch(() => {
-        setView({ kind: 'image', image });
-        if (newFamily) setFamily(newFamily);
+        setView({ kind: 'image', image, example: !!example });
+        if (example) setFamily(example.family);
         setStatus('');
       });
     } catch {
@@ -174,9 +178,16 @@ export function App() {
   }
 
   const button = createMemo(() => {
-    switch (view().kind) {
+    const v = view();
+    switch (v.kind) {
       case 'image':
-        return { label: 'Close image', icon: ICONS.close, action: goLive };
+        return {
+          label: v.example ? 'Close example' : 'Close image',
+          icon: ICONS.close,
+          action: goLive,
+          // Shown as text too: the button no longer controls the camera.
+          spelledOut: true,
+        };
       case 'paused':
         return { label: 'Resume', icon: ICONS.play, action: goLive };
       case 'recording':
@@ -213,7 +224,10 @@ export function App() {
   return (
     <>
       <header>
-        <h1>AprilTag Detector</h1>
+        <h1>
+          {ICONS.logo()}
+          <span>AprilTag Detector</span>
+        </h1>
         <select
           aria-label="Tag family"
           disabled={busy()}
@@ -281,7 +295,7 @@ export function App() {
             onClick={closeMenuThen(() =>
               showImage(
                 fetch(EXAMPLE.url).then((r) => r.blob()),
-                EXAMPLE.family
+                EXAMPLE
               )
             )}
           >
@@ -322,7 +336,7 @@ export function App() {
           </Show>
         </div>
         <Show
-          when={recorded()}
+          when={results()}
           fallback={
             <p
               class="visually-hidden"
@@ -340,20 +354,35 @@ export function App() {
       </main>
 
       <footer>
+        {/* Screen readers get this from the detected-tags readout instead. */}
+        <Show when={view().kind !== 'results' && (still() || frameSize())}>
+          <p class="readout" data-mode={view().kind} aria-hidden="true">
+            <b>{ids().length}</b> tag{ids().length === 1 ? '' : 's'}
+            <Show
+              when={view().kind === 'paused' || view().kind === 'recording'}
+            >
+              <small>{view().kind === 'paused' ? 'Paused' : 'Recording'}</small>
+            </Show>
+          </p>
+        </Show>
         <button
           class="capture"
+          data-state={view().kind}
+          data-record={button().icon === ICONS.record || undefined}
           aria-label={button().label}
           disabled={button().disabled}
           onClick={() => button().action()}
         >
           {button().icon()}
+          <Show when={button().spelledOut}>
+            <span>{button().label}</span>
+          </Show>
+        </button>
+        {/* The about panel is static content in index.html. */}
+        <button class="about" popovertarget="about" aria-label="About">
+          {ICONS.about()}
         </button>
       </footer>
-
-      {/* The about panel is static content in index.html. */}
-      <button class="about" popovertarget="about" aria-label="About">
-        {ICONS.about()}
-      </button>
     </>
   );
 }
@@ -367,15 +396,11 @@ function Results(props: { ids: number[]; onClose: () => void }) {
         fallback={<p>No tags detected during recording</p>}
       >
         <p>
-          {props.ids.length} unique tag{props.ids.length === 1 ? '' : 's'}{' '}
-          detected
+          <span class="count">{props.ids.length}</span>
+          unique tag{props.ids.length === 1 ? '' : 's'} detected
         </p>
         <ul role="list" aria-label="Recorded tags">
-          <For each={idRanges(props.ids)}>
-            {(entry) => (
-              <li classList={{ range: entry.includes('-') }}>{entry}</li>
-            )}
-          </For>
+          <For each={idRanges(props.ids)}>{(entry) => <li>{entry}</li>}</For>
         </ul>
       </Show>
       <button
@@ -383,7 +408,8 @@ function Results(props: { ids: number[]; onClose: () => void }) {
         aria-label="Close recorded tags"
         onClick={props.onClose}
       >
-        ×
+        {ICONS.close()}
+        Close
       </button>
     </section>
   );
@@ -403,7 +429,9 @@ export function idRanges(ids: number[]): string[] {
 }
 
 const icon = (content: () => JSX.Element) => () => (
-  <svg viewBox="0 0 24 24">{content()}</svg>
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    {content()}
+  </svg>
 );
 
 const ICONS = {
@@ -422,8 +450,27 @@ const ICONS = {
       <rect x="14" y="4" width="4" height="16" />
     </>
   )),
-  record: icon(() => <circle cx="12" cy="12" r="8" fill="red" />),
+  record: icon(() => <circle cx="12" cy="12" r="8" />),
   stop: icon(() => <rect x="6" y="6" width="12" height="12" rx="2" />),
+  logo: icon(() => (
+    <>
+      <rect
+        x="2"
+        y="2"
+        width="20"
+        height="20"
+        rx="2"
+        fill="none"
+        stroke="var(--cyan)"
+        stroke-width="2"
+      />
+      <path
+        fill="var(--cyan)"
+        d="M6 6h4v4H6zM14 6h4v4h-4zM10 10h4v4h-4zM6 14h4v4H6z"
+      />
+      <path fill="var(--magenta)" d="M14 14h4v4h-4z" />
+    </>
+  )),
   more: icon(() => (
     <>
       <circle cx="12" cy="5" r="1.5" />

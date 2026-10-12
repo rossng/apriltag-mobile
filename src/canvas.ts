@@ -42,47 +42,57 @@ export function drawOverlay(
     getComputedStyle(canvas).objectFit === 'cover' ? Math.min : Math.max;
   const scale = fit(width / shown.width, height / shown.height) || 1;
   const fontSize =
-    Math.max(12, Math.round(Math.min(shown.width, shown.height) * 0.03)) *
+    Math.max(14, Math.round(Math.min(shown.width, shown.height) * 0.03)) *
     scale;
-  ctx.font = `bold ${fontSize}px Arial`;
+  ctx.font = `600 ${fontSize}px ui-monospace, Menlo, Consolas, monospace`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
 
   const duplicates = new Set(duplicateIds);
   for (const { id, center, corners } of detections) {
-    const duplicate = duplicates.has(id);
-    const outline = duplicate ? '#ff4444' : '#00ffff';
+    const style = duplicates.has(id) ? DUPLICATE : NORMAL;
 
-    ctx.shadowColor = ctx.strokeStyle = outline;
-    ctx.shadowBlur = 10;
-    ctx.lineWidth = Math.max(1, fontSize * 0.07);
+    // Tinted, glowing outline.
     ctx.beginPath();
     for (const { x, y } of corners) ctx.lineTo(x, y);
     ctx.closePath();
+    ctx.fillStyle = style.fill;
+    ctx.fill();
+    ctx.shadowColor = ctx.strokeStyle = style.color;
+    ctx.shadowBlur = 12 * scale;
+    ctx.lineWidth = 2 * scale;
     ctx.stroke();
-
     ctx.shadowBlur = 0;
-    ctx.fillStyle = duplicate ? '#ff8800' : '#ff00ff';
+
+    // Marks the tag's top-left corner to show its orientation.
+    ctx.fillStyle = style.corner;
     ctx.beginPath();
-    ctx.arc(
-      corners[0].x,
-      corners[0].y,
-      Math.max(1.5, fontSize * 0.15),
-      0,
-      2 * Math.PI
-    );
+    ctx.arc(corners[0].x, corners[0].y, 3.5 * scale, 0, 2 * Math.PI);
     ctx.fill();
 
+    // ID badge.
     const label = String(id);
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = Math.max(1, fontSize * 0.14);
-    ctx.strokeText(label, center.x, center.y);
-    ctx.strokeStyle = outline;
-    ctx.lineWidth = Math.max(1, fontSize * 0.07);
-    ctx.strokeText(label, center.x, center.y);
-    ctx.shadowColor = ctx.fillStyle = duplicate ? '#ff4444' : '#00ff80';
-    ctx.shadowBlur = 5;
-    ctx.fillText(label, center.x, center.y);
-    ctx.shadowBlur = 0;
+    const w = ctx.measureText(label).width + fontSize * 0.9;
+    const h = fontSize * 1.5;
+    ctx.beginPath();
+    ctx.roundRect(center.x - w / 2, center.y - h / 2, w, h, h / 2);
+    ctx.fillStyle = 'rgba(6, 6, 12, 0.85)';
+    ctx.fill();
+    ctx.lineWidth = 1.5 * scale;
+    ctx.stroke();
+    ctx.fillStyle = style.color;
+    ctx.fillText(label, center.x, center.y + fontSize * 0.05);
   }
 }
+
+const NORMAL = {
+  color: '#2ef2ff',
+  fill: 'rgba(46, 242, 255, 0.08)',
+  corner: '#ff3fd8',
+};
+const DUPLICATE = {
+  color: '#ff4d6a',
+  fill: 'rgba(255, 77, 106, 0.12)',
+  corner: '#ffb547',
+};
