@@ -3,19 +3,110 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    
-    <meta property="og:title" content="AprilTag Detector - Live AprilTag Scanner" />
-    <meta property="og:description" content="Detect AprilTags instantly in your browser using your camera or uploaded images. No download required." />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="AprilTag Detector" />
-    
+    <title>AprilTag Detector – Detect AprilTags Online in Your Browser</title>
+    <meta
+      name="description"
+      content="Free online AprilTag detector. Point your phone or webcam at AprilTags, or upload a photo, and see each tag's ID instantly. Supports tag36h11, tag25h9, tag16h5, tagStandard41h12 and more. Runs entirely in your browser."
+    />
+    <link rel="canonical" href="https://www.rossng.eu/apriltag-mobile/" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    
-    <title>AprilTag Detector - Live AprilTag Scanner</title>
-    <style>:root{--neon-cyan:#0ff;--neon-magenta:#f0f;--neon-purple:#8000ff;--neon-blue:#0080ff;--neon-green:#00ff80;--neon-pink:#ff0080;--dark-bg:#0a0a0f;--darker-bg:#050508;--card-bg:#101020cc;--glass-bg:#0009;--text-primary:#e0e0ff;--text-secondary:#b0b0d0;--text-accent:var(--neon-cyan)}*{box-sizing:border-box;margin:0;padding:0}body{background:linear-gradient(135deg, var(--dark-bg) 0%, var(--darker-bg) 100%);color:var(--text-primary);font-family:Courier New,monospace;position:relative;overflow-x:hidden}body:before{content:"";pointer-events:none;z-index:-1;background:radial-gradient(circle at 20% 80%,#ff00ff1a 0%,#0000 50%),radial-gradient(circle at 80% 20%,#00ffff1a 0%,#0000 50%),radial-gradient(circle at 40% 40%,#8000ff0d 0%,#0000 50%);position:fixed;inset:0}</style>
-    <script type="module" crossorigin src="./assets/index-P7cTstx-.js"></script>
+    <meta name="theme-color" content="#0a0a0f" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.rossng.eu/apriltag-mobile/" />
+    <meta property="og:site_name" content="AprilTag Detector" />
+    <meta
+      property="og:title"
+      content="AprilTag Detector – Detect AprilTags Online"
+    />
+    <meta
+      property="og:description"
+      content="Detect AprilTags instantly in your browser using your camera or uploaded images. No download required."
+    />
+    <meta name="twitter:card" content="summary" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "AprilTag Detector",
+        "url": "https://www.rossng.eu/apriltag-mobile/",
+        "description": "Free online AprilTag detector that finds AprilTags in live camera video or uploaded images, entirely in the browser.",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Any (web browser)",
+        "browserRequirements": "Requires JavaScript and WebAssembly",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "author": {
+          "@type": "Person",
+          "name": "Ross Gardiner",
+          "url": "https://www.rossng.eu/"
+        },
+        "codeRepository": "https://github.com/rossng/apriltag-mobile",
+        "featureList": [
+          "Live AprilTag detection from a phone or webcam camera",
+          "AprilTag detection in uploaded images",
+          "Tag families tag36h11, tag25h9, tag16h5, tagStandard41h12, tagStandard52h13, tagCircle21h7, tagCircle49h12 and tagCustom48h12",
+          "Record mode to collect every tag ID seen",
+          "Duplicate tag ID warnings"
+        ]
+      }
+    </script>
+    <script type="module" crossorigin src="./assets/index-CxcRIoel.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BPvABXo6.css">
   </head>
 
   <body>
+    <div id="app"></div>
+
+    <!-- Plain HTML so that search engines and visitors without JavaScript
+         can read what the app does. Opened by the app's "About" button. -->
+    <article id="about" popover>
+      <button
+        class="close"
+        popovertarget="about"
+        popovertargetaction="hide"
+        aria-label="Close about"
+      >
+        ×
+      </button>
+      <h2>Online AprilTag detector</h2>
+      <p>
+        Detect
+        <a href="https://april.eecs.umich.edu/software/apriltag">AprilTags</a>
+        in your browser, with nothing to install. Point your phone or webcam at
+        some tags to see their IDs and outlines live, or upload a photo to find
+        every tag in it.
+      </p>
+      <ul>
+        <li>
+          Supports the tag36h11, tag25h9, tag16h5, tagStandard41h12,
+          tagStandard52h13, tagCircle21h7, tagCircle49h12 and tagCustom48h12
+          families.
+        </li>
+        <li>Pause to freeze a frame, or switch family to re-check it.</li>
+        <li>
+          Record mode collects every tag ID seen while you move the camera.
+        </li>
+        <li>Optional warnings when the same tag ID appears twice.</li>
+      </ul>
+      <p>
+        Everything runs on your device: camera video and images are never
+        uploaded. Detection uses the
+        <a href="https://github.com/AprilRobotics/apriltag"
+          >AprilRobotics AprilTag library</a
+        >
+        compiled to WebAssembly.
+      </p>
+      <p>
+        Free and open source on
+        <a href="https://github.com/rossng/apriltag-mobile">GitHub</a>. Read
+        about
+        <a href="https://www.rossng.eu/posts/2025-08-03-apriltag-detector/"
+          >how it was built</a
+        >.
+      </p>
+    </article>
+
   </body>
 </html>
