@@ -86,6 +86,28 @@ export function drawOverlay(
   }
 }
 
+/**
+ * Captures the overlay as a PNG, at full image resolution. A live overlay is
+ * transparent, so the current video frame is drawn underneath it.
+ */
+export function snapshot(
+  canvas: HTMLCanvasElement,
+  video?: HTMLVideoElement
+): Promise<Blob> {
+  const out = document.createElement('canvas');
+  out.width = canvas.width;
+  out.height = canvas.height;
+  const ctx = out.getContext('2d')!;
+  if (video) ctx.drawImage(video, 0, 0, out.width, out.height);
+  ctx.drawImage(canvas, 0, 0);
+  return new Promise((resolve, reject) =>
+    out.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error('Snapshot failed'))),
+      'image/png'
+    )
+  );
+}
+
 /** Converts a position on screen to image pixels on the canvas. */
 export function toImagePoint(
   canvas: HTMLCanvasElement,

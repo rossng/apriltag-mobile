@@ -21,6 +21,7 @@ import {
   drawOverlay,
   LABEL_SIZES,
   pixels,
+  snapshot,
   toImagePoint,
   type LabelSize,
 } from './canvas';
@@ -230,6 +231,14 @@ export function App() {
     }
   }
 
+  /** Whether there's a picture, live or still, to export. */
+  const exportable = () => !results() && !!(still() || frameSize());
+
+  async function saveImage() {
+    const blob = await snapshot(canvas, still() ? undefined : video);
+    download(blob, fileName(family(), 'png'));
+  }
+
   function goLive() {
     setLiveDetections([]);
     setView({ kind: 'live' });
@@ -334,6 +343,24 @@ export function App() {
           >
             Try Example Image
           </button>
+          <div role="separator" />
+          <button
+            role="menuitem"
+            disabled={!exportable()}
+            onClick={closeMenuThen(saveImage)}
+          >
+            Save Image
+          </button>
+          <button
+            role="menuitem"
+            disabled={!exportable()}
+            onClick={closeMenuThen(() =>
+              download(tagList(ids()), fileName(family(), 'txt'))
+            )}
+          >
+            Save Tag List
+          </button>
+          <div role="separator" />
           <a
             role="menuitem"
             href="https://docs.wpilib.org/en/stable/docs/software/vision-processing/apriltag/apriltag-intro.html"
@@ -400,7 +427,18 @@ export function App() {
             </p>
           }
         >
-          {(ids) => <Results ids={ids()} onClose={goLive} />}
+          {(ids) => (
+            <Results
+              ids={ids()}
+              onSave={() =>
+                download(
+                  tagList(ids()),
+                  fileName(`${family()}-collected`, 'txt')
+                )
+              }
+              onClose={goLive}
+            />
+          )}
         </Show>
       </main>
 
@@ -522,7 +560,11 @@ export function App() {
   );
 }
 
-function Results(props: { ids: number[]; onClose: () => void }) {
+function Results(props: {
+  ids: number[];
+  onSave: () => void;
+  onClose: () => void;
+}) {
   return (
     <section class="results">
       <h2>Collected Tags</h2>
@@ -538,16 +580,41 @@ function Results(props: { ids: number[]; onClose: () => void }) {
           <For each={idRanges(props.ids)}>{(entry) => <li>{entry}</li>}</For>
         </ul>
       </Show>
-      <button
-        class="close"
-        aria-label="Close collected tags"
-        onClick={props.onClose}
-      >
-        {ICONS.close()}
-        Close
-      </button>
+      <div class="actions">
+        <Show when={props.ids.length}>
+          <button onClick={props.onSave}>
+            {ICONS.save()}
+            Save Tag List
+          </button>
+        </Show>
+        <button aria-label="Close collected tags" onClick={props.onClose}>
+          {ICONS.close()}
+          Close
+        </button>
+      </div>
     </section>
   );
+}
+
+/** One ID per line. */
+function tagList(ids: number[]): Blob {
+  return new Blob([ids.map((id) => `${id}\n`).join('')], {
+    type: 'text/plain',
+  });
+}
+
+/** e.g. apriltags-tag36h11-2026-10-12-143005.png */
+function fileName(label: string, extension: string): string {
+  const time = new Date().toISOString().slice(0, 19).replace('T', '-');
+  return `apriltags-${label}-${time.replaceAll(':', '')}.${extension}`;
+}
+
+function download(blob: Blob, name: string) {
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 }
 
 /** Summarises sorted, unique IDs, collapsing runs of three or more: 1-3, 5, 6. */
@@ -579,6 +646,16 @@ const ICONS = {
     />
   )),
   play: icon(() => <path d="M8 5v14l11-7z" />),
+  save: icon(() => (
+    <path
+      d="M12 4v11m-5-5 5 5 5-5M5 20h14"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  )),
   pause: icon(() => (
     <>
       <rect x="6" y="4" width="4" height="16" />
