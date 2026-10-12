@@ -294,6 +294,14 @@ h1 svg {
   border-radius: 8px;
 }
 
+#menu > [role='separator'] {
+  width: auto;
+  height: 1px;
+  margin: 4px 12px;
+  padding: 0;
+  background: var(--line);
+}
+
 #menu > :not(:disabled):hover {
   background: var(--cyan-soft);
 }
@@ -509,12 +517,18 @@ canvas.still {
   border-radius: 8px;
 }
 
-.results .close {
-  flex: none;
+.results .actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 32px;
+}
+
+.results .actions button {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 32px;
   padding: 12px 22px;
   font-size: 15px;
   font-weight: 600;
@@ -526,12 +540,12 @@ canvas.still {
     box-shadow 0.15s;
 }
 
-.results .close:hover {
+.results .actions button:hover {
   border-color: rgba(46, 242, 255, 0.5);
   box-shadow: var(--glow-cyan);
 }
 
-.results .close svg {
+.results .actions svg {
   width: 18px;
   height: 18px;
 }

@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { expect, type Page } from '@playwright/test';
 
 export interface ImageFile {
@@ -12,6 +13,11 @@ export interface ImageFile {
  * the `detected-tags` test ID — not on the UI framework or component
  * internals — so tests survive UI rewrites.
  */
+export interface SavedFile {
+  name: string;
+  content: Buffer;
+}
+
 export class AprilTagApp {
   constructor(readonly page: Page) {}
 
@@ -156,6 +162,37 @@ export class AprilTagApp {
     return this.page
       .getByRole('radiogroup', { name: 'Mode' })
       .getByRole('radio', { name: mode });
+  }
+
+  async saveImage(): Promise<SavedFile> {
+    await this.openMenu();
+    return this.saveFile(
+      this.page.getByRole('menuitem', { name: 'Save Image' })
+    );
+  }
+
+  /** Saves the list of tags in view. */
+  async saveTagList(): Promise<SavedFile> {
+    await this.openMenu();
+    return this.saveFile(
+      this.page.getByRole('menuitem', { name: 'Save Tag List' })
+    );
+  }
+
+  async saveCollectedTags(): Promise<SavedFile> {
+    return this.saveFile(this.button('Save Tag List'));
+  }
+
+  private async saveFile(control: {
+    click(): Promise<void>;
+  }): Promise<SavedFile> {
+    const download = this.page.waitForEvent('download');
+    await control.click();
+    const file = await download;
+    return {
+      name: file.suggestedFilename(),
+      content: await readFile(await file.path()),
+    };
   }
 
   async uploadImage(file: ImageFile): Promise<void> {
