@@ -24,19 +24,38 @@ export const FAMILIES: Record<string, number> = {
   tagCustom48h12: 42211,
 };
 
+/** How many misread bits the detector can be asked to correct. */
+export const ERROR_CORRECTION_BITS = [0, 1, 2, 3];
+export const DEFAULT_ERROR_CORRECTION = 2;
+
+/**
+ * The most misread bits a family can correct without risking the wrong ID:
+ * under half its minimum Hamming distance, which ends its name (e.g. h11).
+ */
+export function safeErrorCorrection(family: string): number {
+  const distance = Number(family.match(/h(\d+)$/)![1]);
+  return Math.floor((distance - 1) / 2);
+}
+
 /** Numbers per detection in the results buffer; see wasm/apriltag_wasm.c. */
 const STRIDE = 11;
 
 const wasm = await createModule();
-let wasmFamily = '';
 
-export function detect(image: ImageData, family: string): Detection[] {
-  if (family !== wasmFamily) {
-    if (wasm.ccall('atag_set_family', 'number', ['string'], [family]) !== 0) {
-      throw new Error(`Unknown tag family: ${family}`);
-    }
-    wasmFamily = family;
-  }
+/** Detects tags, correcting up to `bits` misread bits in each. */
+export function detect(
+  image: ImageData,
+  family: string,
+  bits: number
+): Detection[] {
+  // Only reconfigures the detector when the family or bits change.
+  const status = wasm.ccall(
+    'atag_set_family',
+    'number',
+    ['string', 'number'],
+    [family, bits]
+  );
+  if (status !== 0) throw new Error(`Unsupported: ${family}, ${bits} bits`);
 
   // Each call can grow WASM memory, which replaces the HEAP* views, so only
   // read them afterwards.

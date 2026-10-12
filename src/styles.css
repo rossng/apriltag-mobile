@@ -126,6 +126,7 @@ h1 svg {
 }
 
 .family-trigger,
+.detection-button,
 .menu-button {
   height: 40px;
   background-color: var(--surface);
@@ -138,10 +139,68 @@ h1 svg {
 
 .family-trigger:not(:disabled):hover,
 .family-trigger[aria-expanded='true'],
+.detection-button:not(:disabled):hover,
+.detection-button:has(+ :popover-open),
 .menu-button:hover,
 .menu-button:has(+ :popover-open) {
   border-color: rgba(46, 242, 255, 0.5);
   box-shadow: var(--glow-cyan);
+}
+
+/* The family picker and its detection settings, joined as one control. */
+.detection {
+  display: flex;
+  min-width: 0;
+}
+
+.detection .family-trigger {
+  border-radius: 10px 0 0 10px;
+}
+
+.detection-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 40px;
+  margin-left: -1px;
+  color: var(--cyan);
+  border-radius: 0 10px 10px 0;
+}
+
+.detection > button {
+  position: relative;
+}
+
+/* Keep the glow of either half above the other. */
+.detection > :hover,
+.detection > [aria-expanded='true'],
+.detection-button:has(+ :popover-open) {
+  z-index: 1;
+}
+
+.detection-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Flags a setting that may give wrong results, even with the panel shut. */
+.warning-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--bg);
+  background: var(--amber);
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(255, 181, 71, 0.7);
 }
 
 /* Tag family picker */
@@ -809,11 +868,21 @@ footer {
   margin: 0 0 10px;
 }
 
+#detection-settings {
+  position-area: bottom span-left;
+  margin: 6px 0 0;
+}
+
 /* Fallback placement where anchor positioning isn't supported. */
 @supports not (position-area: top) {
   #view-options {
     right: 12px;
     bottom: calc(max(16px, env(safe-area-inset-bottom)) + 84px);
+  }
+
+  #detection-settings {
+    top: calc(max(10px, env(safe-area-inset-top)) + 46px);
+    right: 12px;
   }
 }
 
@@ -907,6 +976,17 @@ input[role='switch'] {
   margin: -4px 0 0;
 }
 
+.panel .warning {
+  margin: -8px 0 0;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--amber);
+  background: rgba(255, 181, 71, 0.1);
+  border: 1px solid rgba(255, 181, 71, 0.35);
+  border-radius: 8px;
+}
+
 /* Say "tap" or "hover" to suit the device. */
 .hint .tap {
   display: none;
@@ -927,22 +1007,26 @@ input[role='switch'] {
     gap: 8px;
   }
 
-  /* Stack the title's words so the family picker has room. */
+  /* Just the logo, so the family picker has room. */
   h1 {
     flex: none;
-    gap: 8px;
-    font-size: 11px;
-    line-height: 1.25;
-    white-space: normal;
   }
 
   h1 span {
-    width: min-content;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
   }
 
   h1 svg {
     width: 22px;
     height: 22px;
+  }
+
+  .detection {
+    flex: 1;
   }
 
   .family-trigger {

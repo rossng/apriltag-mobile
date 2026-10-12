@@ -19,6 +19,8 @@ export interface TagPlacement {
   x: number;
   y: number;
   size: number;
+  /** Modules to invert, as [column, row], to simulate misread bits. */
+  flipped?: [number, number][];
 }
 
 export type TagFamily = 'tag36h11';

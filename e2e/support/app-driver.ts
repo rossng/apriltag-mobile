@@ -137,6 +137,44 @@ export class AprilTagApp {
     return about;
   }
 
+  async setErrorCorrection(bits: number): Promise<void> {
+    await this.button('Detection settings').click();
+    await this.errorCorrection(bits).check();
+    await this.page.keyboard.press('Escape');
+    await expect(this.detectionSettings()).toBeHidden();
+  }
+
+  async expectErrorCorrection(bits: number): Promise<void> {
+    await this.button('Detection settings').click();
+    await expect(this.errorCorrection(bits)).toBeChecked();
+    await this.page.keyboard.press('Escape');
+  }
+
+  /** Asserts the warning about correcting more bits than is safe. */
+  async expectErrorCorrectionWarning(shown: boolean): Promise<void> {
+    // Flagged on the button without opening the panel...
+    const description = shown ? /may get the wrong ID/ : '';
+    await expect(this.button('Detection settings')).toHaveAccessibleDescription(
+      description
+    );
+    // ...and explained inside it.
+    await this.button('Detection settings').click();
+    await expect(
+      this.detectionSettings().getByText('may get the wrong ID')
+    ).toBeVisible({ visible: shown });
+    await this.page.keyboard.press('Escape');
+  }
+
+  private detectionSettings() {
+    return this.page.getByRole('dialog', { name: 'Detection' });
+  }
+
+  private errorCorrection(bits: number) {
+    return this.detectionSettings().getByRole('radio', {
+      name: `${bits} bits`,
+    });
+  }
+
   async setTagIdSize(size: string): Promise<void> {
     await this.button('View options').click();
     await this.tagIdSize(size).check();
