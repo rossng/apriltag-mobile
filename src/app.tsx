@@ -21,6 +21,7 @@ import {
   type Point,
 } from './detector';
 import { FamilyPicker } from './family-picker';
+import { idRanges, parseIdRanges } from './tag-ids';
 import {
   drawableImage,
   drawScene,
@@ -1040,27 +1041,6 @@ function Shortcut(props: { key: string }) {
   return <kbd aria-hidden="true">{props.key}</kbd>;
 }
 
-/**
- * Parses IDs and ranges of IDs, such as "3, 7-9". Skips entries that aren't
- * IDs in a family of `familySize` tags, and says whether there were any.
- */
-export function parseIdRanges(
-  text: string,
-  familySize: number
-): { ranges: [number, number][]; invalid: boolean } {
-  const ranges: [number, number][] = [];
-  let invalid = false;
-  for (const entry of text.replace(/\s*-\s*/g, '-').split(/[\s,]+/)) {
-    if (!entry) continue;
-    const match = /^(\d+)(?:-(\d+))?$/.exec(entry);
-    const first = Number(match?.[1]);
-    const last = Number(match?.[2] ?? first);
-    if (match && first <= last && last < familySize) ranges.push([first, last]);
-    else invalid = true;
-  }
-  return { ranges, invalid };
-}
-
 /** e.g. 2.5×. */
 function formatZoom(k: number): string {
   return `${k < 10 ? Number(k.toFixed(1)) : Math.round(k)}×`;
@@ -1085,19 +1065,6 @@ function download(blob: Blob, name: string) {
   link.download = name;
   link.click();
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-}
-
-/** Summarises sorted, unique IDs, collapsing runs of three or more: 1-3, 5, 6. */
-export function idRanges(ids: number[]): string[] {
-  const entries: string[] = [];
-  for (let start = 0; start < ids.length;) {
-    let end = start;
-    while (ids[end + 1] === ids[end] + 1) end++;
-    if (end - start >= 2) entries.push(`${ids[start]}-${ids[end]}`);
-    else for (let i = start; i <= end; i++) entries.push(String(ids[i]));
-    start = end + 1;
-  }
-  return entries;
 }
 
 const icon = (content: () => JSX.Element) => () => (
