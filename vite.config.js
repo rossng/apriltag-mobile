@@ -61,6 +61,10 @@ export default defineConfig({
 
   build: {
     target: 'esnext',
+    rollupOptions: {
+      // test-tags/ isn't linked from the app: it shows tags to test it with.
+      input: ['index.html', 'test-tags/index.html'],
+    },
   },
 
   // The detector runs in a module worker.

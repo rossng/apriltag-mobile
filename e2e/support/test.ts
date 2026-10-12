@@ -6,6 +6,7 @@ import {
   type FakeCameraOptions,
 } from './browser-harness';
 import { loadTagImages, type Scene } from './scene';
+import { TestTagsPage } from './test-tags-page';
 
 export { expect } from '@playwright/test';
 export { tagGrid } from './scene';
@@ -18,6 +19,8 @@ interface Options {
 
 interface Fixtures {
   app: AprilTagApp;
+  /** The hidden page of tags to test the app with. */
+  testTags: TestTagsPage;
   camera: FakeCamera;
   /** Renders a scene to a PNG file suitable for uploading. */
   imageFile: (scene: Scene, name?: string) => Promise<ImageFile>;
@@ -43,6 +46,10 @@ export const test = base.extend<Fixtures & Options>({
 
   app: async ({ page }, use) => {
     await use(new AprilTagApp(page));
+  },
+
+  testTags: async ({ page }, use) => {
+    await use(new TestTagsPage(page));
   },
 
   camera: async ({ page }, use) => {

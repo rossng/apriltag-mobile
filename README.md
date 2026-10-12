@@ -25,6 +25,11 @@ nix run .#build
 nix develop
 ```
 
+To test the app on a phone, open `/test-tags/` on another screen (e.g.
+<http://localhost:3000/test-tags/>; it isn't linked from the app). It shows a
+page of tags, with controls for the family, size and IDs, each of which can be
+randomised. Its settings are kept in the URL.
+
 To bump the apriltag library version:
 
 ```bash

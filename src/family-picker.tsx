@@ -1,11 +1,6 @@
-import {
-  createResource,
-  createSignal,
-  For,
-  onCleanup,
-  onMount,
-} from 'solid-js';
-import { FAMILIES, renderTag } from './detector';
+import { createSignal, For, onCleanup, onMount } from 'solid-js';
+import { FAMILIES } from './detector';
+import { TagGlyph } from './tag-glyph';
 
 const NAMES = Object.keys(FAMILIES);
 const LIST_ID = 'family-list';
@@ -116,7 +111,7 @@ export function FamilyPicker(props: {
         onClick={() => (open() ? hide() : show())}
         onKeyDown={onKeyDown}
       >
-        <TagGlyph family={props.value} />
+        <TagGlyph family={props.value} id={0} />
         <span class="name">{props.value}</span>{' '}
         <span class="count">{tagCount(props.value)}</span>
       </button>
@@ -139,7 +134,7 @@ export function FamilyPicker(props: {
               onPointerMove={() => setActive(i())}
               onClick={() => choose(i())}
             >
-              <TagGlyph family={name} />
+              <TagGlyph family={name} id={0} />
               <span class="name">{name}</span>{' '}
               <span class="count">{tagCount(name)}</span>
             </div>
@@ -152,49 +147,4 @@ export function FamilyPicker(props: {
 
 function tagCount(family: string): string {
   return `${FAMILIES[family].toLocaleString('en')} tags`;
-}
-
-interface Glyph {
-  size: number;
-  dark: string;
-  light: string;
-}
-
-const glyphs = new Map<string, Promise<Glyph>>();
-
-/** The first tag of a family as one path per colour. */
-function glyph(family: string): Promise<Glyph> {
-  let glyph = glyphs.get(family);
-  if (!glyph) {
-    glyph = renderTag(family, 0).then(({ size, cells }) => {
-      let dark = '';
-      let light = '';
-      cells.forEach((cell, i) => {
-        const square = `M${i % size} ${Math.floor(i / size)}h1v1h-1z`;
-        if (cell === 0) dark += square;
-        else if (cell === 255) light += square;
-      });
-      return { size, dark, light };
-    });
-    glyphs.set(family, glyph);
-  }
-  return glyph;
-}
-
-/** Draws the first tag of a family, once the detector has rendered it. */
-function TagGlyph(props: { family: string }) {
-  const [shape] = createResource(() => props.family, glyph);
-  // latest keeps showing the previous family's tag while the next loads.
-  const size = () => shape.latest?.size ?? 1;
-  return (
-    <svg
-      class="tag-glyph"
-      viewBox={`0 0 ${size()} ${size()}`}
-      shape-rendering="crispEdges"
-      aria-hidden="true"
-    >
-      <path class="dark" d={shape.latest?.dark} />
-      <path class="light" d={shape.latest?.light} />
-    </svg>
-  );
 }
