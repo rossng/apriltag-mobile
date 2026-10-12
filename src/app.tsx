@@ -16,6 +16,7 @@ import {
   type Detection,
   type Point,
 } from './detector';
+import { FamilyPicker } from './family-picker';
 import {
   drawOverlay,
   LABEL_SIZES,
@@ -295,20 +296,12 @@ export function App() {
           {ICONS.logo()}
           <span>AprilTag Detector</span>
         </h1>
-        <select
-          aria-label="Tag family"
+        <FamilyPicker
+          value={family()}
           disabled={busy()}
           title={busy() ? 'Family selection is disabled while collecting' : ''}
-          onChange={(e) => setFamily(e.currentTarget.value)}
-        >
-          <For each={Object.entries(FAMILIES)}>
-            {([id, count]) => (
-              <option value={id} selected={id === family()}>
-                {id} ({count} tags)
-              </option>
-            )}
-          </For>
-        </select>
+          onChange={setFamily}
+        />
         <button
           class="menu-button"
           popovertarget="menu"

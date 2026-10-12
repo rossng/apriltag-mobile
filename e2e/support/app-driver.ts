@@ -95,12 +95,27 @@ export class AprilTagApp {
   }
 
   async selectFamily(family: string): Promise<void> {
-    await this.familySelect().selectOption(family);
+    await this.familySelect().click();
+    await this.page
+      .getByRole('option', { name: new RegExp(`^${family} `) })
+      .click();
     await this.expectFamily(family);
   }
 
+  /** Presses keys with the family picker focused. */
+  async pressOnFamilyPicker(...keys: string[]): Promise<void> {
+    await this.familySelect().focus();
+    for (const key of keys) await this.page.keyboard.press(key);
+  }
+
+  async expectFamilyListOpen(open: boolean): Promise<void> {
+    await expect(
+      this.page.getByRole('listbox', { name: 'Tag family' })
+    ).toBeVisible({ visible: open });
+  }
+
   async expectFamily(family: string): Promise<void> {
-    await expect(this.familySelect()).toHaveValue(family);
+    await expect(this.familySelect()).toContainText(`${family} `);
   }
 
   async expectFamilySelectable(selectable: boolean): Promise<void> {

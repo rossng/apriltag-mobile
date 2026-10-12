@@ -59,6 +59,26 @@ export function detect(image: ImageData, family: string): Detection[] {
   });
 }
 
+/** A tag's cells, row by row: 0 for black, 255 for white, 128 for none. */
+export interface TagPattern {
+  size: number;
+  cells: Uint8Array;
+}
+
+/** Renders one tag of a family as cells, for showing what the family looks like. */
+export function renderTag(family: string, id: number): TagPattern {
+  const size = wasm.ccall(
+    'atag_render',
+    'number',
+    ['string', 'number'],
+    [family, id]
+  );
+  if (size < 0) throw new Error(`Unknown tag: ${family} #${id}`);
+  // Same size again, so this returns the buffer without changing it.
+  const ptr = wasm._atag_image(size, size);
+  return { size, cells: wasm.HEAPU8.slice(ptr, ptr + size * size) };
+}
+
 /** IDs that appear more than once, in ascending order. */
 export function findDuplicateIds(detections: Detection[]): number[] {
   const seen = new Set<number>();
