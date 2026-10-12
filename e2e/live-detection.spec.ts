@@ -17,22 +17,22 @@ test('detects tags from the camera and freezes them when paused', async ({
   await app.expectDetectedTags([3]);
 });
 
-test('record mode accumulates tags seen across frames', async ({
+test('collect mode accumulates tags seen across frames', async ({
   app,
   camera,
 }) => {
   await app.open();
-  await app.setRecordMode(true);
+  await app.setMode('Collect');
 
-  // Show each scene only once recording, so the readout can only match
-  // after a frame has been recorded.
-  await app.startRecording();
+  // Show each scene only once collecting, so the readout can only match
+  // after a frame has been collected.
+  await app.startCollecting();
   await camera.show(tagGrid([0, 1, 2, 3]));
   await app.expectDetectedTags([0, 1, 2, 3]);
 
   await camera.show(tagGrid([4, 5, 6, 7]));
   await app.expectDetectedTags([4, 5, 6, 7]);
 
-  await app.stopRecording();
-  await app.expectRecordedTags(['0-7']);
+  await app.stopCollecting();
+  await app.expectCollectedTags(['0-7']);
 });

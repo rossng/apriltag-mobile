@@ -28,10 +28,14 @@ type View =
   | { kind: 'live' }
   | { kind: 'paused'; image: ImageData }
   | { kind: 'image'; image: ImageData; example: boolean }
-  | { kind: 'recording'; seen: Set<number> }
+  | { kind: 'collecting'; seen: Set<number> }
   | { kind: 'results'; ids: number[] };
 
 type Size = { width: number; height: number };
+
+/** What the shutter does: freeze a frame, or collect every ID seen. */
+type Mode = 'scan' | 'collect';
+const MODES: Record<Mode, string> = { scan: 'Scan', collect: 'Collect' };
 
 const FAMILY_KEY = 'selectedFamily';
 const DUPLICATES_KEY = 'detectDuplicates';
@@ -44,7 +48,9 @@ export function App() {
   const [family, setFamily] = createSignal(
     saved in FAMILIES ? saved : 'tag36h11'
   );
-  const [recordMode, setRecordMode] = createSignal(false);
+  const [mode, setMode] = createSignal<Mode>('scan');
+  /** How many unique IDs have been seen while collecting. */
+  const [collected, setCollected] = createSignal(0);
   const [detectDuplicates, setDetectDuplicates] = createSignal(
     localStorage.getItem(DUPLICATES_KEY) === 'true'
   );
@@ -74,7 +80,7 @@ export function App() {
     const v = view();
     return v.kind === 'paused' || v.kind === 'image' ? v.image : undefined;
   };
-  const busy = () => view().kind === 'recording' || view().kind === 'results';
+  const busy = () => view().kind === 'collecting' || view().kind === 'results';
   const detections = createMemo(() => {
     const image = still();
     return image ? detect(image, family()) : liveDetections();
@@ -121,6 +127,22 @@ export function App() {
     }
   };
 
+  // Swiping sideways across the live view switches mode, as in camera apps.
+  let swipeFrom: Point | undefined;
+  const startSwipe = (e: PointerEvent) => {
+    swipeFrom =
+      e.pointerType === 'mouse' ? undefined : { x: e.clientX, y: e.clientY };
+  };
+  const endSwipe = (e: PointerEvent) => {
+    if (!swipeFrom || view().kind !== 'live') return;
+    const dx = e.clientX - swipeFrom.x;
+    const dy = e.clientY - swipeFrom.y;
+    swipeFrom = undefined;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > 2 * Math.abs(dy)) {
+      setMode(dx < 0 ? 'collect' : 'scan');
+    }
+  };
+
   /** Feeds every new camera frame to the detector while in a live view. */
   function watchFrames() {
     video.cancelVideoFrameCallback(frameCallback);
@@ -128,10 +150,13 @@ export function App() {
       const { videoWidth: width, videoHeight: height } = video;
       setFrameSize({ width, height });
       const v = view();
-      if (v.kind === 'live' || v.kind === 'recording') {
+      if (v.kind === 'live' || v.kind === 'collecting') {
         const found = detect(pixels(video, width, height), family());
         setLiveDetections(found);
-        if (v.kind === 'recording') for (const { id } of found) v.seen.add(id);
+        if (v.kind === 'collecting') {
+          for (const { id } of found) v.seen.add(id);
+          setCollected(v.seen.size);
+        }
       }
       frameCallback = video.requestVideoFrameCallback(onFrame);
     };
@@ -209,9 +234,9 @@ export function App() {
     setView({ kind: 'live' });
   }
 
-  function stopRecording() {
+  function stopCollecting() {
     const v = view();
-    if (v.kind !== 'recording') return;
+    if (v.kind !== 'collecting') return;
     setView({ kind: 'results', ids: [...v.seen].sort((a, b) => a - b) });
   }
 
@@ -228,20 +253,24 @@ export function App() {
         };
       case 'paused':
         return { label: 'Resume', icon: ICONS.play, action: goLive };
-      case 'recording':
+      case 'collecting':
         return {
-          label: 'Stop recording',
+          label: 'Stop collecting',
           icon: ICONS.stop,
-          action: stopRecording,
+          action: stopCollecting,
         };
     }
     const disabled = view().kind === 'results' || !frameSize();
-    return recordMode()
+    return mode() === 'collect'
       ? {
-          label: 'Start recording',
+          label: 'Start collecting',
           icon: ICONS.record,
           disabled,
-          action: () => setView({ kind: 'recording', seen: new Set<number>() }),
+          action: () =>
+            batch(() => {
+              setCollected(0);
+              setView({ kind: 'collecting', seen: new Set<number>() });
+            }),
         }
       : {
           label: 'Pause',
@@ -269,7 +298,7 @@ export function App() {
         <select
           aria-label="Tag family"
           disabled={busy()}
-          title={busy() ? 'Family selection is disabled while recording' : ''}
+          title={busy() ? 'Family selection is disabled while collecting' : ''}
           onChange={(e) => setFamily(e.currentTarget.value)}
         >
           <For each={Object.entries(FAMILIES)}>
@@ -288,24 +317,6 @@ export function App() {
           {ICONS.more()}
         </button>
         <div ref={menu} id="menu" popover role="menu" aria-label="More options">
-          <button
-            role="menuitemcheckbox"
-            aria-checked={recordMode()}
-            onClick={() => {
-              setRecordMode(!recordMode());
-              if (!recordMode()) stopRecording();
-            }}
-          >
-            Record Mode
-          </button>
-          <button
-            role="menuitemcheckbox"
-            aria-checked={detectDuplicates()}
-            title="Warn when the same tag ID appears more than once"
-            onClick={() => setDetectDuplicates(!detectDuplicates())}
-          >
-            Warn on Duplicate IDs
-          </button>
           <Show when={cameras().length > 1}>
             <button role="menuitem" onClick={closeMenuThen(nextCamera)}>
               Switch Camera
@@ -360,7 +371,11 @@ export function App() {
         />
       </header>
 
-      <main classList={{ cover: cover() && view().kind !== 'image' }}>
+      <main
+        classList={{ cover: cover() && view().kind !== 'image' }}
+        onPointerDown={startSwipe}
+        onPointerUp={endSwipe}
+      >
         <video ref={video} autoplay muted playsinline />
         <canvas
           ref={canvas}
@@ -397,21 +412,45 @@ export function App() {
       </main>
 
       <footer>
+        <div class="modes" role="radiogroup" aria-label="Mode">
+          <For each={Object.entries(MODES)}>
+            {([value, name]) => (
+              <label>
+                <input
+                  type="radio"
+                  name="mode"
+                  value={value}
+                  checked={mode() === value}
+                  disabled={busy()}
+                  onChange={() => setMode(value as Mode)}
+                />
+                {name}
+              </label>
+            )}
+          </For>
+        </div>
         {/* Screen readers get this from the detected-tags readout instead. */}
         <Show when={view().kind !== 'results' && (still() || frameSize())}>
-          <p class="readout" data-mode={view().kind} aria-hidden="true">
-            <b>{ids().length}</b> tag{ids().length === 1 ? '' : 's'}
+          <p class="readout" aria-hidden="true">
             <Show
-              when={view().kind === 'paused' || view().kind === 'recording'}
+              when={view().kind === 'collecting'}
+              fallback={
+                <>
+                  <b>{ids().length}</b> tag{ids().length === 1 ? '' : 's'}
+                  <Show when={view().kind === 'paused'}>
+                    <small>Paused</small>
+                  </Show>
+                </>
+              }
             >
-              <small>{view().kind === 'paused' ? 'Paused' : 'Recording'}</small>
+              <b>{collected()}</b> collected
             </Show>
           </p>
         </Show>
         <button
           class="capture"
           data-state={view().kind}
-          data-record={button().icon === ICONS.record || undefined}
+          data-collect={button().icon === ICONS.record || undefined}
           aria-label={button().label}
           disabled={button().disabled}
           onClick={() => button().action()}
@@ -449,6 +488,18 @@ export function App() {
               onChange={(e) => setCover(e.currentTarget.checked)}
             />
           </label>
+          <label class="option">
+            <span>
+              Highlight Duplicate IDs
+              <small>Warn when the same ID appears more than once</small>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={detectDuplicates()}
+              onChange={(e) => setDetectDuplicates(e.currentTarget.checked)}
+            />
+          </label>
           <fieldset>
             <legend>Tag ID Size</legend>
             <div class="segmented">
@@ -481,22 +532,22 @@ export function App() {
 function Results(props: { ids: number[]; onClose: () => void }) {
   return (
     <section class="results">
-      <h2>Recorded Tags</h2>
+      <h2>Collected Tags</h2>
       <Show
         when={props.ids.length}
-        fallback={<p>No tags detected during recording</p>}
+        fallback={<p>No tags seen while collecting</p>}
       >
         <p>
           <span class="count">{props.ids.length}</span>
           unique tag{props.ids.length === 1 ? '' : 's'} detected
         </p>
-        <ul role="list" aria-label="Recorded tags">
+        <ul role="list" aria-label="Collected tags">
           <For each={idRanges(props.ids)}>{(entry) => <li>{entry}</li>}</For>
         </ul>
       </Show>
       <button
         class="close"
-        aria-label="Close recorded tags"
+        aria-label="Close collected tags"
         onClick={props.onClose}
       >
         {ICONS.close()}

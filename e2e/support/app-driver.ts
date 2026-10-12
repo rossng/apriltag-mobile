@@ -41,19 +41,19 @@ export class AprilTagApp {
     await expect(this.button('Pause')).toBeVisible();
   }
 
-  async startRecording(): Promise<void> {
-    await this.button('Start recording').click();
-    await expect(this.button('Stop recording')).toBeVisible();
+  async startCollecting(): Promise<void> {
+    await this.button('Start collecting').click();
+    await expect(this.button('Stop collecting')).toBeVisible();
   }
 
-  async stopRecording(): Promise<void> {
-    await this.button('Stop recording').click();
+  async stopCollecting(): Promise<void> {
+    await this.button('Stop collecting').click();
   }
 
-  async closeRecordedTags(): Promise<void> {
-    await this.button('Close recorded tags').click();
+  async closeCollectedTags(): Promise<void> {
+    await this.button('Close collected tags').click();
     await expect(
-      this.page.getByRole('list', { name: 'Recorded tags' })
+      this.page.getByRole('list', { name: 'Collected tags' })
     ).toBeHidden();
   }
 
@@ -62,12 +62,23 @@ export class AprilTagApp {
     await expect(this.button('Pause')).toBeVisible();
   }
 
-  async setRecordMode(enabled: boolean): Promise<void> {
-    await this.setMenuToggle('Record Mode', enabled);
+  async setMode(mode: 'Scan' | 'Collect'): Promise<void> {
+    await this.mode(mode).check();
+  }
+
+  async expectModeSwitchable(switchable: boolean): Promise<void> {
+    for (const mode of ['Scan', 'Collect'] as const) {
+      await expect(this.mode(mode)).toBeEnabled({ enabled: switchable });
+    }
   }
 
   async setDuplicateDetection(enabled: boolean): Promise<void> {
-    await this.setMenuToggle('Warn on Duplicate IDs', enabled);
+    await this.button('View options').click();
+    await this.viewOptions()
+      .getByRole('switch', { name: 'Highlight Duplicate IDs' })
+      .setChecked(enabled);
+    await this.page.keyboard.press('Escape');
+    await expect(this.viewOptions()).toBeHidden();
   }
 
   async switchCamera(): Promise<void> {
@@ -126,6 +137,12 @@ export class AprilTagApp {
     return this.viewOptions().getByRole('radio', { name: size });
   }
 
+  private mode(mode: 'Scan' | 'Collect') {
+    return this.page
+      .getByRole('radiogroup', { name: 'Mode' })
+      .getByRole('radio', { name: mode });
+  }
+
   async uploadImage(file: ImageFile): Promise<void> {
     const fileChooser = this.page.waitForEvent('filechooser');
     await this.openMenu();
@@ -169,33 +186,23 @@ export class AprilTagApp {
     await expect(this.page.getByRole('status')).toHaveText(text);
   }
 
-  /** Asserts the entries shown in the recorded-tags summary, e.g. `['0-7']`. */
-  async expectRecordedTags(entries: string[]): Promise<void> {
+  /** Asserts the entries shown in the collected-tags summary, e.g. `['0-7']`. */
+  async expectCollectedTags(entries: string[]): Promise<void> {
     if (entries.length === 0) {
       await expect(
-        this.page.getByText('No tags detected during recording')
+        this.page.getByText('No tags seen while collecting')
       ).toBeVisible();
       return;
     }
     await expect(
       this.page
-        .getByRole('list', { name: 'Recorded tags' })
+        .getByRole('list', { name: 'Collected tags' })
         .getByRole('listitem')
     ).toHaveText(entries);
   }
 
   private button(name: string) {
     return this.page.getByRole('button', { name, exact: true });
-  }
-
-  private async setMenuToggle(name: string, enabled: boolean): Promise<void> {
-    await this.openMenu();
-    const toggle = this.page.getByRole('menuitemcheckbox', { name });
-    if ((await toggle.getAttribute('aria-checked')) !== String(enabled)) {
-      await toggle.click();
-    }
-    await expect(toggle).toBeChecked({ checked: enabled });
-    await this.closeMenu();
   }
 
   private familySelect() {
@@ -210,11 +217,5 @@ export class AprilTagApp {
     const menu = this.page.getByRole('menu');
     if (!(await menu.isVisible())) await this.menuButton().click();
     await expect(menu).toBeVisible();
-  }
-
-  private async closeMenu(): Promise<void> {
-    const menu = this.page.getByRole('menu');
-    if (await menu.isVisible()) await this.menuButton().click();
-    await expect(menu).toBeHidden();
   }
 }
