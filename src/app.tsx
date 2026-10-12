@@ -90,6 +90,8 @@ export function App() {
   });
   const [cameras, setCameras] = createSignal<MediaDeviceInfo[]>([]);
   const [status, setStatus] = createSignal('');
+  /** Why the camera isn't running, if it failed to start. */
+  const [cameraError, setCameraError] = createSignal('');
 
   let video!: HTMLVideoElement;
   let canvas!: HTMLCanvasElement;
@@ -192,6 +194,7 @@ export function App() {
   async function startCamera(deviceId?: string) {
     stream?.getTracks().forEach((track) => track.stop());
     setFrameSize(null);
+    setCameraError('');
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -206,13 +209,15 @@ export function App() {
       watchFrames();
       const devices = await navigator.mediaDevices.enumerateDevices();
       setCameras(devices.filter((d) => d.kind === 'videoinput'));
-      setStatus('');
-    } catch {
+    } catch (e) {
       stream = undefined;
-      setStatus(
-        deviceId
-          ? 'Failed to switch camera. Please try again.'
-          : 'Camera access denied. Please allow camera permissions and refresh.'
+      const reason = (e as DOMException).name;
+      setCameraError(
+        reason === 'NotAllowedError'
+          ? 'Camera access denied. Allow it in your browser’s site settings and try again, or detect tags in an image instead.'
+          : reason === 'NotFoundError' || reason === 'OverconstrainedError'
+            ? 'No camera found. You can still detect tags in an image.'
+            : 'The camera couldn’t start. Try again, or detect tags in an image instead.'
       );
     }
   }
@@ -237,6 +242,13 @@ export function App() {
       stream?.getTracks().forEach((track) => track.stop());
     });
   });
+
+  function showExample() {
+    showImage(
+      fetch(EXAMPLE.url).then((r) => r.blob()),
+      EXAMPLE
+    );
+  }
 
   async function showImage(
     blob: Blob | Promise<Blob>,
@@ -418,12 +430,7 @@ export function App() {
           <button
             role="menuitem"
             disabled={busy()}
-            onClick={closeMenuThen(() =>
-              showImage(
-                fetch(EXAMPLE.url).then((r) => r.blob()),
-                EXAMPLE
-              )
-            )}
+            onClick={closeMenuThen(showExample)}
           >
             Try Example Image
           </button>
@@ -488,6 +495,25 @@ export function App() {
           onPointerDown={pointAt(false)}
           onPointerLeave={(e) => e.pointerType === 'mouse' && setFocus(null)}
         />
+        <Show when={view().kind === 'live' && !frameSize()}>
+          <div class="empty">
+            <Show
+              when={cameraError()}
+              fallback={<p class="starting">Starting camera…</p>}
+            >
+              {ICONS.cameraOff()}
+              <h2>Camera unavailable</h2>
+              <p role="status">{cameraError()}</p>
+              <div class="actions">
+                <button class="primary" onClick={() => startCamera()}>
+                  Try Again
+                </button>
+                <button onClick={() => fileInput.click()}>Upload Image</button>
+                <button onClick={showExample}>Try Example Image</button>
+              </div>
+            </Show>
+          </div>
+        </Show>
         <div class="notices">
           <p role="status">{status()}</p>
           <Show when={duplicates().length}>
@@ -779,6 +805,17 @@ const ICONS = {
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </g>
+  )),
+  // Feather's camera-off (MIT licence).
+  cameraOff: icon(() => (
+    <path
+      d="M1 1l22 22M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3-3h6l2 3h4a2 2 0 0 1 2 2v9.34m-7.72-2.06a4 4 0 1 1-5.56-5.56"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
   )),
   more: icon(() => (
     <>

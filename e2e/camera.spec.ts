@@ -28,4 +28,10 @@ test.describe('with camera access denied', () => {
     await app.uploadImage(await imageFile(tagGrid([6])));
     await app.expectDetectedTags([6]);
   });
+
+  test('offers the example image instead', async ({ app }) => {
+    await app.open({ camera: false });
+    await app.viewExampleInstead();
+    await app.expectFamily('tagStandard52h13');
+  });
 });

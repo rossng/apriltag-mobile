@@ -586,14 +586,18 @@ canvas.still {
 }
 
 .results .actions {
+  margin-top: 32px;
+}
+
+/* Rows of pill buttons, e.g. under results or an empty camera view. */
+.actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
-  margin-top: 32px;
 }
 
-.results .actions button {
+.actions button {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -608,14 +612,83 @@ canvas.still {
     box-shadow 0.15s;
 }
 
-.results .actions button:hover {
+.actions button:hover {
   border-color: rgba(46, 242, 255, 0.5);
   box-shadow: var(--glow-cyan);
 }
 
-.results .actions svg {
+.actions .primary {
+  color: var(--bg);
+  background: var(--cyan);
+  border-color: var(--cyan);
+}
+
+.actions svg {
   width: 18px;
   height: 18px;
+}
+
+/* Empty camera view: starting up, or unavailable. */
+
+.empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: safe center;
+  gap: 12px;
+  padding: 24px;
+  overflow-y: auto;
+  text-align: center;
+  background: var(--surface);
+}
+
+.empty > svg {
+  width: 48px;
+  height: 48px;
+  color: var(--text-dim);
+}
+
+.empty h2 {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.empty p {
+  max-width: 26rem;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.empty .actions {
+  margin-top: 12px;
+}
+
+.starting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.starting::before {
+  width: 36px;
+  height: 36px;
+  content: '';
+  border: 2px solid var(--cyan-soft);
+  border-top-color: var(--cyan);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Footer */
