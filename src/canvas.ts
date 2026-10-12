@@ -1,4 +1,4 @@
-import { findDuplicateIds, type Detection } from './detector';
+import type { Detection } from './detector';
 
 const scratch = document
   .createElement('canvas')
@@ -19,10 +19,12 @@ export function pixels(
 /**
  * Draws detections at the given image resolution, over `image` if given or
  * otherwise over a transparent background (for overlaying live video).
+ * Tags whose IDs are in `duplicateIds` are highlighted.
  */
 export function drawOverlay(
   canvas: HTMLCanvasElement,
   detections: Detection[],
+  duplicateIds: number[],
   { width, height }: { width: number; height: number },
   image?: ImageData
 ): void {
@@ -46,7 +48,7 @@ export function drawOverlay(
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  const duplicates = new Set(findDuplicateIds(detections));
+  const duplicates = new Set(duplicateIds);
   for (const { id, center, corners } of detections) {
     const duplicate = duplicates.has(id);
     const outline = duplicate ? '#ff4444' : '#00ffff';
