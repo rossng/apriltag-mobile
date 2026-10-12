@@ -94,6 +94,14 @@ export class AprilTagApp {
     await expect(this.familySelect()).toBeEnabled({ enabled: selectable });
   }
 
+  /** Opens the about panel and returns it. */
+  async openAbout() {
+    await this.button('About').click();
+    const about = this.page.locator('#about');
+    await expect(about).toBeVisible();
+    return about;
+  }
+
   async uploadImage(file: ImageFile): Promise<void> {
     const fileChooser = this.page.waitForEvent('filechooser');
     await this.openMenu();

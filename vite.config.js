@@ -2,7 +2,17 @@ import { defineConfig } from 'vite';
 import solid from 'vite-plugin-solid';
 
 export default defineConfig({
-  plugins: [solid()],
+  plugins: [
+    solid(),
+    {
+      // Keeps PR previews out of search results; set by pr-preview.yml.
+      name: 'noindex',
+      transformIndexHtml: () =>
+        process.env.VITE_NOINDEX
+          ? [{ tag: 'meta', attrs: { name: 'robots', content: 'noindex' } }]
+          : [],
+    },
+  ],
 
   // Base URL - use VITE_BASE_PATH for custom deployments (e.g. PR previews),
   // './' for production GitHub Pages, '/' for local dev

@@ -350,15 +350,10 @@ export function App() {
         </button>
       </footer>
 
-      <a
-        class="about"
-        href="https://github.com/rossng/apriltag-mobile"
-        target="_blank"
-        rel="noopener"
-        aria-label="About"
-      >
+      {/* The about panel is static content in index.html. */}
+      <button class="about" popovertarget="about" aria-label="About">
         {ICONS.about()}
-      </a>
+      </button>
     </>
   );
 }

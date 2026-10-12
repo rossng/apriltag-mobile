@@ -27,6 +27,7 @@ jobs:
         run: npm run build
         env:
           VITE_BASE_PATH: /apriltag-mobile/pr-preview/pr-${{ github.event.pull_request.number }}/
+          VITE_NOINDEX: '1'
 
       - name: Deploy PR preview
         uses: peaceiris/actions-gh-pages@v4
