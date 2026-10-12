@@ -24,8 +24,10 @@ test('record mode accumulates tags seen across frames', async ({
   await app.open();
   await app.setRecordMode(true);
 
-  await camera.show(tagGrid([0, 1, 2, 3]));
+  // Show each scene only once recording, so the readout can only match
+  // after a frame has been recorded.
   await app.startRecording();
+  await camera.show(tagGrid([0, 1, 2, 3]));
   await app.expectDetectedTags([0, 1, 2, 3]);
 
   await camera.show(tagGrid([4, 5, 6, 7]));
