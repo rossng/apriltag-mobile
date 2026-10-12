@@ -37,6 +37,7 @@ static const family_def FAMILIES[] = {
 static apriltag_detector_t *detector;
 static const family_def *family_def_in_use;
 static apriltag_family_t *family;
+static int family_bits;
 static uint8_t *image;
 static double *results;
 
@@ -47,18 +48,21 @@ static const family_def *find_family(const char *name) {
     return NULL;
 }
 
-// Selects the tag family to detect. Returns 0, or -1 for an unknown name.
-EMSCRIPTEN_KEEPALIVE int atag_set_family(const char *name) {
+// Selects the tag family to detect, correcting up to `bits` misread bits
+// (0 to 3). Returns 0, or -1 for an unknown name or unsupported bits.
+EMSCRIPTEN_KEEPALIVE int atag_set_family(const char *name, int bits) {
     const family_def *def = find_family(name);
-    if (!def) return -1;
+    if (!def || bits < 0 || bits > 3) return -1;
+    if (def == family_def_in_use && bits == family_bits) return 0;
     if (!detector) detector = apriltag_detector_create();
     if (family) {
         apriltag_detector_remove_family(detector, family);
         family_def_in_use->destroy(family);
     }
     family_def_in_use = def;
+    family_bits = bits;
     family = def->create();
-    apriltag_detector_add_family_bits(detector, family, 2);
+    apriltag_detector_add_family_bits(detector, family, bits);
     return 0;
 }
 

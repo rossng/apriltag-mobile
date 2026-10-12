@@ -10,9 +10,12 @@ import {
   type JSX,
 } from 'solid-js';
 import {
+  DEFAULT_ERROR_CORRECTION,
   detect,
+  ERROR_CORRECTION_BITS,
   FAMILIES,
   findDuplicateIds,
+  safeErrorCorrection,
   type Detection,
   type Point,
 } from './detector';
@@ -42,6 +45,7 @@ const MODES: Record<Mode, string> = { scan: 'Scan', collect: 'Collect' };
 const FAMILY_KEY = 'selectedFamily';
 const DUPLICATES_KEY = 'detectDuplicates';
 const LABEL_SIZE_KEY = 'labelSize';
+const ERROR_CORRECTION_KEY = 'errorCorrection';
 const EXAMPLE = { url: 'sample.jpg', family: 'tagStandard52h13' };
 
 export function App() {
@@ -50,6 +54,19 @@ export function App() {
   const [family, setFamily] = createSignal(
     saved in FAMILIES ? saved : 'tag36h11'
   );
+  /** How many misread bits to correct in each tag. */
+  const savedBits = localStorage.getItem(ERROR_CORRECTION_KEY);
+  const [bits, setBits] = createSignal(
+    ERROR_CORRECTION_BITS.find((n) => String(n) === savedBits) ??
+      DEFAULT_ERROR_CORRECTION
+  );
+  /** A warning when correcting more bits than the family can safely. */
+  const bitsWarning = () => {
+    const safe = safeErrorCorrection(family());
+    return bits() > safe
+      ? `${family()} can only reliably correct ${safe} bits, so tags may get the wrong ID.`
+      : '';
+  };
   const [mode, setMode] = createSignal<Mode>('scan');
   /** How many unique IDs have been seen while collecting. */
   const [collected, setCollected] = createSignal(0);
@@ -85,7 +102,7 @@ export function App() {
   const busy = () => view().kind === 'collecting' || view().kind === 'results';
   const detections = createMemo(() => {
     const image = still();
-    return image ? detect(image, family()) : liveDetections();
+    return image ? detect(image, family(), bits()) : liveDetections();
   });
   const ids = () =>
     detections()
@@ -103,6 +120,9 @@ export function App() {
     localStorage.setItem(DUPLICATES_KEY, String(detectDuplicates()))
   );
   createEffect(() => localStorage.setItem(LABEL_SIZE_KEY, labelSize()));
+  createEffect(() =>
+    localStorage.setItem(ERROR_CORRECTION_KEY, String(bits()))
+  );
 
   // A tapped point means nothing once the picture changes.
   createEffect(() => {
@@ -153,7 +173,7 @@ export function App() {
       setFrameSize({ width, height });
       const v = view();
       if (v.kind === 'live' || v.kind === 'collecting') {
-        const found = detect(pixels(video, width, height), family());
+        const found = detect(pixels(video, width, height), family(), bits());
         setLiveDetections(found);
         if (v.kind === 'collecting') {
           for (const { id } of found) v.seen.add(id);
@@ -305,12 +325,72 @@ export function App() {
           {ICONS.logo()}
           <span>AprilTag Detector</span>
         </h1>
-        <FamilyPicker
-          value={family()}
-          disabled={busy()}
-          title={busy() ? 'Family selection is disabled while collecting' : ''}
-          onChange={setFamily}
-        />
+        <div class="detection">
+          <FamilyPicker
+            value={family()}
+            disabled={busy()}
+            title={
+              busy() ? 'Family selection is disabled while collecting' : ''
+            }
+            onChange={setFamily}
+          />
+          <button
+            class="detection-button"
+            popovertarget="detection-settings"
+            aria-label="Detection settings"
+            aria-describedby={bitsWarning() ? 'bits-warning' : undefined}
+            disabled={busy()}
+            title={
+              busy()
+                ? 'Detection settings are locked while collecting'
+                : bitsWarning()
+            }
+          >
+            {ICONS.settings()}
+            <Show when={bitsWarning()}>
+              <span class="warning-badge">!</span>
+            </Show>
+          </button>
+          <div
+            id="detection-settings"
+            class="panel"
+            popover
+            role="dialog"
+            aria-labelledby="detection-settings-title"
+          >
+            <h2 id="detection-settings-title">Detection</h2>
+            <fieldset>
+              <legend>Error Correction</legend>
+              <div class="segmented">
+                <For each={ERROR_CORRECTION_BITS}>
+                  {(n) => (
+                    <label>
+                      <input
+                        type="radio"
+                        name="error-correction"
+                        value={n}
+                        checked={bits() === n}
+                        onChange={() => setBits(n)}
+                      />
+                      {n}
+                      <span class="visually-hidden"> bits</span>
+                    </label>
+                  )}
+                </For>
+              </div>
+            </fieldset>
+            <p class="hint">
+              {bits()
+                ? `Fixes up to ${bits()} misread bit${bits() === 1 ? '' : 's'} per tag. More finds worn or blurry tags but risks false detections.`
+                : 'Exact matches only: fewest false detections, but misses worn or blurry tags.'}
+            </p>
+            <Show when={bitsWarning()}>
+              <p id="bits-warning" class="warning">
+                {bitsWarning()}
+              </p>
+            </Show>
+          </div>
+        </div>
         <button
           class="menu-button"
           popovertarget="menu"
@@ -682,6 +762,19 @@ const ICONS = {
       />
       <path fill="var(--magenta)" d="M14 14h4v4h-4z" />
     </>
+  )),
+  // Feather's gear (MIT licence).
+  settings: icon(() => (
+    <g
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </g>
   )),
   more: icon(() => (
     <>

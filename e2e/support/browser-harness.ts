@@ -55,6 +55,26 @@ export function installBrowserHarness({ tagImages, camera }: HarnessOptions) {
     return image;
   }
 
+  /** Inverts the given modules of a one-pixel-per-module tag bitmap. */
+  function withFlips(
+    image: HTMLImageElement,
+    flipped: [number, number][] = []
+  ): CanvasImageSource {
+    if (!flipped.length) return image;
+    const canvas = document.createElement('canvas');
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(image, 0, 0);
+    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    for (const [x, y] of flipped) {
+      const i = 4 * (y * canvas.width + x);
+      for (let c = 0; c < 3; c++) pixels.data[i + c] = 255 - pixels.data[i + c];
+    }
+    ctx.putImageData(pixels, 0, 0);
+    return canvas;
+  }
+
   async function renderScene(scene: Scene): Promise<HTMLCanvasElement> {
     const images = await Promise.all(
       scene.tags.map((t) => loadTag(`${t.family}:${t.id}`))
@@ -68,7 +88,7 @@ export function installBrowserHarness({ tagImages, camera }: HarnessOptions) {
     // Tag bitmaps are one pixel per module; keep edges crisp when scaling up.
     ctx.imageSmoothingEnabled = false;
     scene.tags.forEach((t, i) =>
-      ctx.drawImage(images[i], t.x, t.y, t.size, t.size)
+      ctx.drawImage(withFlips(images[i], t.flipped), t.x, t.y, t.size, t.size)
     );
     return canvas;
   }
