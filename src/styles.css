@@ -54,6 +54,7 @@ body {
 }
 
 button,
+input,
 select,
 a {
   font: inherit;
@@ -365,6 +366,23 @@ h1 svg {
   background: var(--cyan-soft);
 }
 
+#menu kbd {
+  margin-left: auto;
+  padding: 1px 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+/* Only devices likely to have a keyboard show shortcuts. */
+@media (hover: none), (pointer: coarse) {
+  #menu kbd {
+    display: none;
+  }
+}
+
 /* Marks links that open in a new tab, so scanning isn't interrupted. */
 a[target='_blank']::after {
   content: '↗';
@@ -524,6 +542,59 @@ canvas.still {
   display: grid;
   justify-items: center;
   gap: 8px;
+}
+
+/* Tags to find */
+
+.find {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: min(34rem, 100%);
+  padding: 4px 4px 4px 14px;
+  background: var(--surface-glass);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(46, 242, 255, 0.45);
+  border-radius: 999px;
+  box-shadow: var(--glow-cyan);
+}
+
+.find:has([aria-invalid='true']) {
+  border-color: rgba(255, 77, 106, 0.6);
+  box-shadow: none;
+}
+
+.find input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 0;
+  /* At least 16px, or iOS zooms in when it's focused. */
+  font-family: var(--font-mono);
+  font-size: 16px;
+  background: none;
+  border: none;
+  outline: none;
+}
+
+.find input::placeholder {
+  color: var(--text-dim);
+}
+
+.find button {
+  display: flex;
+  padding: 8px;
+  color: var(--text-dim);
+  border-radius: 50%;
+}
+
+.find button:hover {
+  color: var(--text);
+  background: var(--cyan-soft);
+}
+
+.find svg {
+  width: 18px;
+  height: 18px;
 }
 
 .notices p {

@@ -44,7 +44,7 @@
             emcc -Os \
               -s MODULARIZE=1 \
               -s EXPORT_ES6 \
-              -s ENVIRONMENT=web \
+              -s ENVIRONMENT=worker \
               -s ALLOW_MEMORY_GROWTH=1 \
               -s EXPORTED_RUNTIME_METHODS='["ccall", "HEAPU8", "HEAPF64"]' \
               -I${apriltag-src} \

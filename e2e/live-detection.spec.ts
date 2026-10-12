@@ -36,3 +36,16 @@ test('collect mode accumulates tags seen across frames', async ({
   await app.stopCollecting();
   await app.expectCollectedTags(['0-7']);
 });
+
+test('detects and finds tags among many in one frame', async ({
+  app,
+  camera,
+}) => {
+  const ids = Array.from({ length: 144 }, (_, i) => i);
+  await app.open();
+  await camera.show(tagGrid(ids, { cols: 16 }));
+  await app.expectDetectedTags(ids);
+
+  await app.findTags('7, 70, 140-143');
+  await app.expectFoundTags([7, 70, 140, 141, 142, 143]);
+});

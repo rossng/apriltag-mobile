@@ -4,6 +4,7 @@ import {
   createMemo,
   createSignal,
   For,
+  on,
   onCleanup,
   onMount,
   Show,
@@ -59,6 +60,8 @@ const DUPLICATES_KEY = 'detectDuplicates';
 const LABEL_SIZE_KEY = 'labelSize';
 const FILL_SCREEN_KEY = 'fillScreen';
 const ERROR_CORRECTION_KEY = 'errorCorrection';
+const HIGH_RES_KEY = 'highResolution';
+const FIND_KEY = 'findTags';
 const EXAMPLE = { url: 'sample.jpg', family: 'tagStandard52h13' };
 
 export function App() {
@@ -80,6 +83,9 @@ export function App() {
       ? `${family()} can only reliably correct ${safe} bits, so tags may get the wrong ID.`
       : '';
   };
+  const [highRes, setHighRes] = createSignal(
+    localStorage.getItem(HIGH_RES_KEY) === 'true'
+  );
   const [mode, setMode] = createSignal<Mode>('scan');
   /** How many unique IDs have been seen while collecting. */
   const [collected, setCollected] = createSignal(0);
@@ -95,7 +101,13 @@ export function App() {
   );
   /** Where the user is pointing, to bring that tag's ID to the front. */
   const [focus, setFocus] = createSignal<Point | null>(null);
-  const [liveDetections, setLiveDetections] = createSignal<Detection[]>([]);
+  /** The IDs of tags to find, as typed, e.g. "3, 7-9". */
+  const [findText, setFindText] = createSignal(
+    localStorage.getItem(FIND_KEY) ?? ''
+  );
+  const [finding, setFinding] = createSignal(findText() !== '');
+  /** Detections in the still picture, or else the latest camera frame. */
+  const [detections, setDetections] = createSignal<Detection[]>([]);
   /** Camera frame size, or null until the camera has produced a frame. */
   const [frameSize, setFrameSize] = createSignal<Size | null>(null, {
     equals: (a, b) => a?.width === b?.width && a?.height === b?.height,
@@ -109,6 +121,7 @@ export function App() {
   let canvas!: HTMLCanvasElement;
   let menu!: HTMLDivElement;
   let fileInput!: HTMLInputElement;
+  let findInput: HTMLInputElement | undefined;
   let stream: MediaStream | undefined;
   let frameCallback = 0;
 
@@ -117,10 +130,6 @@ export function App() {
     return v.kind === 'paused' || v.kind === 'image' ? v.image : undefined;
   };
   const busy = () => view().kind === 'collecting' || view().kind === 'results';
-  const detections = createMemo(() => {
-    const image = still();
-    return image ? detect(image, family(), bits()) : liveDetections();
-  });
   const ids = () =>
     detections()
       .map((d) => d.id)
@@ -131,6 +140,16 @@ export function App() {
   };
   const duplicates = () =>
     detectDuplicates() && !results() ? findDuplicateIds(detections()) : [];
+  const sought = createMemo(() =>
+    parseIdRanges(findText(), FAMILIES[family()])
+  );
+  const isSought = (id: number) =>
+    sought().ranges.some(([first, last]) => id >= first && id <= last);
+  const detectOptions = () => ({
+    family: family(),
+    bits: bits(),
+    highRes: highRes(),
+  });
 
   createEffect(() => localStorage.setItem(FAMILY_KEY, family()));
   createEffect(() =>
@@ -141,6 +160,23 @@ export function App() {
   createEffect(() =>
     localStorage.setItem(ERROR_CORRECTION_KEY, String(bits()))
   );
+  createEffect(() => localStorage.setItem(HIGH_RES_KEY, String(highRes())));
+  createEffect(() => localStorage.setItem(FIND_KEY, findText()));
+
+  // IDs only identify tags within one family.
+  createEffect(on(family, () => closeFind(), { defer: true }));
+
+  // Until a still picture's tags are found, keep showing the old ones: when
+  // pausing, those are the tags from the latest camera frame.
+  createEffect(() => {
+    const image = still();
+    if (!image) return;
+    let current = true;
+    onCleanup(() => (current = false));
+    detect(image, detectOptions()).then(
+      (found) => current && setDetections(found)
+    );
+  });
 
   /** The camera view's size in CSS pixels. */
   const [box, setBox] = createSignal<Size>({ width: 0, height: 0 });
@@ -161,6 +197,7 @@ export function App() {
   const scene = (): Scene => ({
     detections: detections(),
     duplicateIds: duplicates(),
+    isSought: sought().ranges.length ? isSought : undefined,
     labelSize: labelSize(),
     focus: focus(),
   });
@@ -259,22 +296,37 @@ export function App() {
       setZoom((z) => panBy(z, dx, dy, { fit: f, image, box: box() }));
   }
 
-  /** Feeds every new camera frame to the detector while in a live view. */
+  /**
+   * Feeds camera frames to the detector while in a live view, skipping those
+   * that arrive while it's busy.
+   */
   function watchFrames() {
     video.cancelVideoFrameCallback(frameCallback);
+    let detecting = false;
     const onFrame = () => {
+      frameCallback = video.requestVideoFrameCallback(onFrame);
       const { videoWidth: width, videoHeight: height } = video;
       setFrameSize({ width, height });
       const v = view();
-      if (v.kind === 'live' || v.kind === 'collecting') {
-        const found = detect(pixels(video, width, height), family(), bits());
-        setLiveDetections(found);
-        if (v.kind === 'collecting') {
-          for (const { id } of found) v.seen.add(id);
-          setCollected(v.seen.size);
-        }
-      }
-      frameCallback = video.requestVideoFrameCallback(onFrame);
+      if (detecting || (v.kind !== 'live' && v.kind !== 'collecting')) return;
+      detecting = true;
+      const options = detectOptions();
+      detect(pixels(video, width, height), options, { transfer: true })
+        .then((found) => {
+          // Drop results that are out of date.
+          const now = detectOptions();
+          const changed =
+            now.family !== options.family ||
+            now.bits !== options.bits ||
+            now.highRes !== options.highRes;
+          if (view() !== v || changed) return;
+          setDetections(found);
+          if (v.kind === 'collecting') {
+            for (const { id } of found) v.seen.add(id);
+            setCollected(v.seen.size);
+          }
+        })
+        .finally(() => (detecting = false));
     };
     frameCallback = video.requestVideoFrameCallback(onFrame);
   }
@@ -290,8 +342,8 @@ export function App() {
           ...(deviceId
             ? { deviceId: { exact: deviceId } }
             : { facingMode: { ideal: 'environment' } }),
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          width: { ideal: highRes() ? 1920 : 1280 },
+          height: { ideal: highRes() ? 1080 : 720 },
         },
       });
       video.srcObject = stream;
@@ -312,9 +364,11 @@ export function App() {
     }
   }
 
+  const currentCamera = () =>
+    stream?.getVideoTracks()[0]?.getSettings().deviceId;
+
   function nextCamera() {
-    const current = stream?.getVideoTracks()[0]?.getSettings().deviceId;
-    const i = cameras().findIndex((c) => c.deviceId === current);
+    const i = cameras().findIndex((c) => c.deviceId === currentCamera());
     startCamera(cameras()[(i + 1) % cameras().length].deviceId);
   }
 
@@ -356,16 +410,32 @@ export function App() {
     const onKeyDown = (e: KeyboardEvent) => {
       if (!(still() || cameraZoomable())) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if ((e.target as Element).closest('input, textarea')) return;
       if (e.key === '+' || e.key === '=') zoomViewBy(1.5);
       else if (e.key === '-') zoomViewBy(1 / 1.5);
       else if (e.key === '0') resetZoom();
     };
     document.addEventListener('keydown', onKeyDown);
 
+    // Menu items with a keyboard shortcut say so in aria-keyshortcuts.
+    const onShortcut = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+      if ((e.target as Element).closest('input, textarea')) return;
+      if (!/^[a-z]$/i.test(e.key)) return;
+      const item = menu.querySelector<HTMLElement>(
+        `[aria-keyshortcuts="${e.key.toUpperCase()}"]`
+      );
+      if (!item) return;
+      e.preventDefault();
+      item.click();
+    };
+    document.addEventListener('keydown', onShortcut);
+
     onCleanup(() => {
       resize.disconnect();
       detachGestures();
       document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keydown', onShortcut);
     });
     // Mobile browsers can stop the camera video while the page is hidden.
     const onVisible = () => {
@@ -396,6 +466,7 @@ export function App() {
       const image = pixels(bitmap, bitmap.width, bitmap.height);
       batch(() => {
         setView({ kind: 'image', image, example: !!example });
+        setDetections([]);
         if (example) setFamily(example.family);
         setStatus('');
       });
@@ -419,8 +490,18 @@ export function App() {
   }
 
   function goLive() {
-    setLiveDetections([]);
+    setDetections([]);
     setView({ kind: 'live' });
+  }
+
+  function openFind() {
+    setFinding(true);
+    findInput?.focus();
+  }
+
+  function closeFind() {
+    setFindText('');
+    setFinding(false);
   }
 
   function stopCollecting() {
@@ -548,6 +629,21 @@ export function App() {
                 {bitsWarning()}
               </p>
             </Show>
+            <label class="option">
+              <span>
+                High Resolution
+                <small>Find smaller tags, at a lower frame rate</small>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                checked={highRes()}
+                onChange={(e) => {
+                  setHighRes(e.currentTarget.checked);
+                  if (stream) startCamera(currentCamera());
+                }}
+              />
+            </label>
           </div>
         </div>
         <button
@@ -558,41 +654,63 @@ export function App() {
           {ICONS.more()}
         </button>
         <div ref={menu} id="menu" popover role="menu" aria-label="More options">
+          <button
+            role="menuitem"
+            aria-keyshortcuts="F"
+            onClick={closeMenuThen(openFind)}
+          >
+            Find Tags
+            <Shortcut key="F" />
+          </button>
+          <div role="separator" />
           <Show when={cameras().length > 1}>
-            <button role="menuitem" onClick={closeMenuThen(nextCamera)}>
+            <button
+              role="menuitem"
+              aria-keyshortcuts="C"
+              onClick={closeMenuThen(nextCamera)}
+            >
               Switch Camera
+              <Shortcut key="C" />
             </button>
           </Show>
           <button
             role="menuitem"
+            aria-keyshortcuts="U"
             disabled={busy()}
             onClick={closeMenuThen(() => fileInput.click())}
           >
             Upload Image
+            <Shortcut key="U" />
           </button>
           <button
             role="menuitem"
+            aria-keyshortcuts="E"
             disabled={busy()}
             onClick={closeMenuThen(showExample)}
           >
             Try Example Image
+            <Shortcut key="E" />
           </button>
           <div role="separator" />
           <button
             role="menuitem"
+            aria-keyshortcuts="S"
             disabled={!exportable()}
             onClick={closeMenuThen(saveImage)}
           >
             Save Image
+            <Shortcut key="S" />
           </button>
           <button
             role="menuitem"
+            aria-keyshortcuts="T"
             disabled={!exportable()}
             onClick={closeMenuThen(() =>
               download(tagList(ids()), fileName(family(), 'txt'))
             )}
           >
             Save Tag List
+            <Shortcut key="T" />
           </button>
           <div role="separator" />
           <a
@@ -699,6 +817,32 @@ export function App() {
           </div>
         </Show>
         <div class="notices">
+          <Show when={finding() && !results()}>
+            <div class="find" role="search">
+              <input
+                ref={findInput}
+                value={findText()}
+                aria-label="Tags to find"
+                aria-invalid={sought().invalid}
+                placeholder="IDs to find, e.g. 3, 7-9"
+                autocomplete="off"
+                spellcheck={false}
+                enterkeyhint="done"
+                onInput={(e) => setFindText(e.currentTarget.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === 'Escape') {
+                    e.currentTarget.blur();
+                  }
+                }}
+                onBlur={() => {
+                  if (!findText().trim()) closeFind();
+                }}
+              />
+              <button aria-label="Stop finding tags" onClick={closeFind}>
+                {ICONS.close()}
+              </button>
+            </div>
+          </Show>
           <p role="status">{status()}</p>
           <Show when={duplicates().length}>
             <p role="alert">
@@ -714,6 +858,7 @@ export function App() {
               class="visually-hidden"
               data-testid="detected-tags"
               data-tag-ids={ids().join(',')}
+              data-found-tag-ids={ids().filter(isSought).join(',')}
             >
               {ids().length
                 ? `Detected tags: ${ids().join(', ')}`
@@ -888,6 +1033,32 @@ function Results(props: {
       </div>
     </section>
   );
+}
+
+/** Shows a menu item's keyboard shortcut, on devices likely to have a keyboard. */
+function Shortcut(props: { key: string }) {
+  return <kbd aria-hidden="true">{props.key}</kbd>;
+}
+
+/**
+ * Parses IDs and ranges of IDs, such as "3, 7-9". Skips entries that aren't
+ * IDs in a family of `familySize` tags, and says whether there were any.
+ */
+export function parseIdRanges(
+  text: string,
+  familySize: number
+): { ranges: [number, number][]; invalid: boolean } {
+  const ranges: [number, number][] = [];
+  let invalid = false;
+  for (const entry of text.replace(/\s*-\s*/g, '-').split(/[\s,]+/)) {
+    if (!entry) continue;
+    const match = /^(\d+)(?:-(\d+))?$/.exec(entry);
+    const first = Number(match?.[1]);
+    const last = Number(match?.[2] ?? first);
+    if (match && first <= last && last < familySize) ranges.push([first, last]);
+    else invalid = true;
+  }
+  return { ranges, invalid };
 }
 
 /** e.g. 2.5×. */

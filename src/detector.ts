@@ -1,5 +1,3 @@
-import createModule from './apriltag/apriltag_wasm.js';
-
 export interface Point {
   x: number;
   y: number;
@@ -37,65 +35,88 @@ export function safeErrorCorrection(family: string): number {
   return Math.floor((distance - 1) / 2);
 }
 
-/** Numbers per detection in the results buffer; see wasm/apriltag_wasm.c. */
-const STRIDE = 11;
-
-const wasm = await createModule();
-
-/** Detects tags, correcting up to `bits` misread bits in each. */
-export function detect(
-  image: ImageData,
-  family: string,
-  bits: number
-): Detection[] {
-  // Only reconfigures the detector when the family or bits change.
-  const status = wasm.ccall(
-    'atag_set_family',
-    'number',
-    ['string', 'number'],
-    [family, bits]
-  );
-  if (status !== 0) throw new Error(`Unsupported: ${family}, ${bits} bits`);
-
-  // Each call can grow WASM memory, which replaces the HEAP* views, so only
-  // read them afterwards.
-  const imagePtr = wasm._atag_image(image.width, image.height);
-  wasm.HEAPU8.set(image.data, imagePtr);
-  const count = wasm._atag_detect(image.width, image.height);
-  const start = wasm._atag_results() / Float64Array.BYTES_PER_ELEMENT;
-  const r = wasm.HEAPF64.subarray(start, start + count * STRIDE);
-
-  return Array.from({ length: count }, (_, i) => {
-    const at = (j: number) => r[i * STRIDE + j];
-    return {
-      id: at(0),
-      center: { x: at(1), y: at(2) },
-      corners: [0, 1, 2, 3].map((c) => ({
-        x: at(3 + 2 * c),
-        y: at(4 + 2 * c),
-      })),
-    };
-  });
-}
-
 /** A tag's cells, row by row: 0 for black, 255 for white, 128 for none. */
 export interface TagPattern {
   size: number;
   cells: Uint8Array;
 }
 
-/** Renders one tag of a family as cells, for showing what the family looks like. */
-export function renderTag(family: string, id: number): TagPattern {
-  const size = wasm.ccall(
-    'atag_render',
-    'number',
-    ['string', 'number'],
-    [family, id]
+export type DetectorRequest =
+  | {
+      kind: 'detect';
+      image: ImageData;
+      family: string;
+      bits: number;
+      quadDecimate: number;
+    }
+  | { kind: 'render'; family: string; tag: number };
+
+/** Messages are numbered to match responses with their requests. */
+export type DetectorMessage = DetectorRequest & { id: number };
+
+export type DetectorResponse = { id: number } & (
+  { result: Detection[] | TagPattern } | { error: string }
+);
+
+// The detector runs in a worker so that slow frames don't hold up the page.
+// The worker handles one request at a time, in order.
+const worker = new Worker(new URL('./detect-worker.ts', import.meta.url), {
+  type: 'module',
+});
+const pending = new Map<number, (response: DetectorResponse) => void>();
+let nextId = 0;
+
+worker.onmessage = ({ data }: MessageEvent<DetectorResponse>) => {
+  pending.get(data.id)?.(data);
+  pending.delete(data.id);
+};
+worker.onerror = (event) => {
+  for (const [id, settle] of pending) settle({ id, error: event.message });
+  pending.clear();
+};
+
+function request<T>(
+  message: DetectorRequest,
+  transfer: Transferable[] = []
+): Promise<T> {
+  const id = nextId++;
+  return new Promise((resolve, reject) => {
+    pending.set(id, (response) =>
+      'error' in response
+        ? reject(new Error(response.error))
+        : resolve(response.result as T)
+    );
+    const numbered: DetectorMessage = { ...message, id };
+    worker.postMessage(numbered, transfer);
+  });
+}
+
+export interface DetectOptions {
+  family: string;
+  /** How many misread bits to correct in each tag. */
+  bits: number;
+  /** Finds smaller tags, but takes longer. */
+  highRes: boolean;
+}
+
+/**
+ * Detects tags in an image. With `transfer`, the image's pixels move to the
+ * worker rather than being copied, which leaves `image` empty.
+ */
+export function detect(
+  image: ImageData,
+  { family, bits, highRes }: DetectOptions,
+  { transfer = false } = {}
+): Promise<Detection[]> {
+  return request(
+    { kind: 'detect', image, family, bits, quadDecimate: highRes ? 1 : 2 },
+    transfer ? [image.data.buffer] : []
   );
-  if (size < 0) throw new Error(`Unknown tag: ${family} #${id}`);
-  // Same size again, so this returns the buffer without changing it.
-  const ptr = wasm._atag_image(size, size);
-  return { size, cells: wasm.HEAPU8.slice(ptr, ptr + size * size) };
+}
+
+/** Renders one tag of a family as cells, for showing what the family looks like. */
+export function renderTag(family: string, tag: number): Promise<TagPattern> {
+  return request({ kind: 'render', family, tag });
 }
 
 /** IDs that appear more than once, in ascending order. */

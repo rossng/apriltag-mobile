@@ -3,6 +3,7 @@ import type { Scene } from './scene';
 export interface HarnessOptions {
   /** Tag bitmaps as data URLs, keyed by `family:id`. */
   tagImages: Record<string, string>;
+  /** The camera's resolution is what the app asks for, or else this size. */
   camera: FakeCameraOptions & { width: number; height: number; fps: number };
 }
 
@@ -84,20 +85,31 @@ export function installBrowserHarness({ tagImages, camera }: HarnessOptions) {
     return canvas;
   }
 
-  async function renderScene(scene: Scene): Promise<HTMLCanvasElement> {
+  /** Renders a scene, scaled to `width` if that differs from the scene's. */
+  async function renderScene(
+    scene: Scene,
+    width = scene.width
+  ): Promise<HTMLCanvasElement> {
     const images = await Promise.all(
       scene.tags.map((t) => loadTag(`${t.family}:${t.id}`))
     );
+    const scale = width / scene.width;
     const canvas = document.createElement('canvas');
-    canvas.width = scene.width;
-    canvas.height = scene.height;
+    canvas.width = width;
+    canvas.height = Math.round(scene.height * scale);
     const ctx = canvas.getContext('2d')!;
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     // Tag bitmaps are one pixel per module; keep edges crisp when scaling up.
     ctx.imageSmoothingEnabled = false;
     scene.tags.forEach((t, i) =>
-      ctx.drawImage(withFlips(images[i], t.flipped), t.x, t.y, t.size, t.size)
+      ctx.drawImage(
+        withFlips(images[i], t.flipped),
+        t.x * scale,
+        t.y * scale,
+        t.size * scale,
+        t.size * scale
+      )
     );
     return canvas;
   }
@@ -108,14 +120,23 @@ export function installBrowserHarness({ tagImages, camera }: HarnessOptions) {
   cameraCanvas.width = camera.width;
   cameraCanvas.height = camera.height;
   const cameraCtx = cameraCanvas.getContext('2d')!;
+  let currentScene: Scene | null = null;
   let currentFrame: HTMLCanvasElement | null = null;
 
+  /** Renders the current scene at the camera's resolution. */
+  async function renderFrame(): Promise<void> {
+    const scene = currentScene;
+    const frame = scene && (await renderScene(scene, cameraCanvas.width));
+    if (scene === currentScene) currentFrame = frame;
+  }
+
   setInterval(() => {
+    const { width, height } = cameraCanvas;
     if (currentFrame) {
-      cameraCtx.drawImage(currentFrame, 0, 0, camera.width, camera.height);
+      cameraCtx.drawImage(currentFrame, 0, 0, width, height);
     } else {
       cameraCtx.fillStyle = '#ffffff';
-      cameraCtx.fillRect(0, 0, camera.width, camera.height);
+      cameraCtx.fillRect(0, 0, width, height);
     }
   }, 1000 / camera.fps);
 
@@ -143,6 +164,17 @@ export function installBrowserHarness({ tagImages, camera }: HarnessOptions) {
         'NotFoundError'
       );
     }
+    // Real cameras pick their nearest resolution; this one gives exactly that.
+    const ideal = (c?: ConstrainULong) => (typeof c === 'object' ? c.ideal : c);
+    const video = constraints.video === true ? {} : constraints.video;
+    const width = ideal(video.width) ?? camera.width;
+    const height = ideal(video.height) ?? camera.height;
+    if (width !== cameraCanvas.width || height !== cameraCanvas.height) {
+      Object.assign(cameraCanvas, { width, height });
+      currentFrame = null;
+      await renderFrame();
+    }
+
     const stream = cameraCanvas.captureStream(camera.fps);
     if (camera.phoneControls) {
       const track = stream.getVideoTracks()[0];
@@ -167,7 +199,8 @@ export function installBrowserHarness({ tagImages, camera }: HarnessOptions) {
     },
     camera: {
       async show(scene) {
-        currentFrame = await renderScene(scene);
+        currentScene = scene;
+        await renderFrame();
       },
       settings: () => ({ ...cameraSettings }),
     },
