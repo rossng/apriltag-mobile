@@ -33,7 +33,7 @@ const TAGS_DIR = join(import.meta.dirname, '..', 'fixtures', 'tags');
 
 /**
  * Lays out the given tag IDs in a grid, each tag centred in its cell with a
- * generous quiet zone.
+ * generous quiet zone, unless given a larger `size`.
  */
 export function tagGrid(
   ids: number[],
@@ -41,13 +41,21 @@ export function tagGrid(
     family = 'tag36h11',
     width = 1280,
     height = 720,
-  }: { family?: TagFamily; width?: number; height?: number } = {}
+    cols = Math.min(ids.length, 4),
+    size: tagSize,
+  }: {
+    family?: TagFamily;
+    width?: number;
+    height?: number;
+    cols?: number;
+    /** Each tag's edge length in pixels. */
+    size?: number;
+  } = {}
 ): Scene {
-  const cols = Math.min(ids.length, 4);
   const rows = Math.ceil(ids.length / cols);
   const cellWidth = width / cols;
   const cellHeight = height / rows;
-  const size = Math.floor(Math.min(cellWidth, cellHeight) * 0.7);
+  const size = tagSize ?? Math.floor(Math.min(cellWidth, cellHeight) * 0.7);
 
   const tags = ids.map((id, i) => ({
     family,

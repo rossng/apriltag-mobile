@@ -244,6 +244,60 @@ export class AprilTagApp {
     await this.page.keyboard.press('Escape');
   }
 
+  async setHighResolution(enabled: boolean): Promise<void> {
+    await this.button('Detection settings').click();
+    await this.detectionSettings()
+      .getByRole('switch', { name: /^High Resolution/ })
+      .setChecked(enabled);
+    await this.page.keyboard.press('Escape');
+    await expect(this.detectionSettings()).toBeHidden();
+  }
+
+  /** Enters the IDs of tags to find, e.g. `'1, 5-7'`. */
+  async findTags(ids: string): Promise<void> {
+    if (!(await this.findInput().isVisible())) {
+      await this.openMenu();
+      await this.page.getByRole('menuitem', { name: 'Find Tags' }).click();
+    }
+    // Typed key by key, so key presses reach the page as they would by hand.
+    await this.findInput().clear();
+    await this.findInput().pressSequentially(ids);
+    await this.findInput().press('Enter');
+  }
+
+  async stopFindingTags(): Promise<void> {
+    await this.button('Stop finding tags').click();
+    await this.expectTagsToFind(null);
+  }
+
+  /** Asserts the IDs entered to find tags, as typed, or that there are none. */
+  async expectTagsToFind(
+    ids: string | null,
+    { invalid = false }: { invalid?: boolean } = {}
+  ): Promise<void> {
+    if (ids === null) {
+      await expect(this.findInput()).toBeHidden();
+      return;
+    }
+    await expect(this.findInput()).toHaveValue(ids);
+    await expect(this.findInput()).toHaveAttribute(
+      'aria-invalid',
+      String(invalid)
+    );
+  }
+
+  async expectFindTagsFocused(): Promise<void> {
+    await expect(this.findInput()).toBeFocused();
+  }
+
+  async pressShortcut(key: string): Promise<void> {
+    await this.page.keyboard.press(key);
+  }
+
+  private findInput() {
+    return this.page.getByRole('textbox', { name: 'Tags to find' });
+  }
+
   private detectionSettings() {
     return this.page.getByRole('dialog', { name: 'Detection' });
   }
@@ -337,27 +391,44 @@ export class AprilTagApp {
     await expect(this.button('Close image')).toBeVisible();
   }
 
+  /** Asserts the set of tags currently detected (order-insensitive). */
+  async expectDetectedTags(
+    ids: number[],
+    options?: { stableForMs?: number }
+  ): Promise<void> {
+    await this.expectTagReadout('data-tag-ids', ids, options);
+  }
+
+  /** Asserts which detected tags are highlighted as being searched for. */
+  async expectFoundTags(
+    ids: number[],
+    options?: { stableForMs?: number }
+  ): Promise<void> {
+    await this.expectTagReadout('data-found-tag-ids', ids, options);
+  }
+
   /**
-   * Asserts the set of tags currently detected (order-insensitive).
+   * Asserts a set of tag IDs in the readout (order-insensitive).
    *
    * A matching reading can be transient — e.g. stale detections that have not
    * yet been replaced by the next frame — so once it matches, it must keep
    * matching for `stableForMs`.
    */
-  async expectDetectedTags(
+  private async expectTagReadout(
+    attribute: string,
     ids: number[],
     { stableForMs = 500 }: { stableForMs?: number } = {}
   ): Promise<void> {
     const expected = [...ids].sort((a, b) => a - b).join(',');
     const readout = this.page.getByTestId('detected-tags');
-    await expect(readout).toHaveAttribute('data-tag-ids', expected);
+    await expect(readout).toHaveAttribute(attribute, expected);
 
     const deadline = Date.now() + stableForMs;
     while (Date.now() < deadline) {
       await this.page.waitForTimeout(50);
       expect(
-        await readout.getAttribute('data-tag-ids'),
-        `detected tags changed within ${stableForMs}ms of matching`
+        await readout.getAttribute(attribute),
+        `${attribute} changed within ${stableForMs}ms of matching`
       ).toBe(expected);
     }
   }

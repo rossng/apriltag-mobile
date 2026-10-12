@@ -63,6 +63,8 @@ export interface Scene {
   detections: Detection[];
   /** IDs to highlight as duplicates. */
   duplicateIds: number[];
+  /** Picks out the tags being searched for, if any, dimming the rest. */
+  isSought?: (id: number) => boolean;
   labelSize: LabelSize;
   /** A point, in image pixels, whose tag's ID is brought to the front. */
   focus?: Point | null;
@@ -75,7 +77,7 @@ export interface Scene {
  */
 export function drawScene(
   ctx: CanvasRenderingContext2D,
-  { detections, duplicateIds, labelSize, focus }: Scene,
+  { detections, duplicateIds, isSought, labelSize, focus }: Scene,
   view: View,
   cssPixel: number,
   image?: CanvasImageSource
@@ -89,20 +91,30 @@ export function drawScene(
   }
 
   const duplicates = new Set(duplicateIds);
-  const tags = detections.map((detection) => ({
-    detection,
-    style: duplicates.has(detection.id) ? DUPLICATE : NORMAL,
-    badge: badge(ctx, detection, labelSize, cssPixel),
-  }));
+  const tags = detections.map((detection) => {
+    const style = duplicates.has(detection.id) ? DUPLICATE : NORMAL;
+    // Duplicates stay red, as a warning, but fainter.
+    const dimmed = isSought ? !isSought(detection.id) : false;
+    return {
+      detection,
+      style,
+      look: dimmed && style === NORMAL ? DIMMED : style,
+      alpha: dimmed ? DIMMED_ALPHA : 1,
+      badge: badge(ctx, detection, labelSize, cssPixel),
+    };
+  });
 
-  for (const { detection, style } of tags) {
-    drawOutline(ctx, detection, style, cssPixel);
+  for (const { detection, look, alpha } of tags) {
+    ctx.globalAlpha = alpha;
+    drawOutline(ctx, detection, look, cssPixel);
   }
 
   // Labels go above every outline, with the focused one on top of the rest.
+  // They stay opaque, as see-through labels are muddy and hard to read.
+  ctx.globalAlpha = 1;
   const focused = focus ? tagAt(tags, focus) : undefined;
   for (const tag of tags) {
-    if (tag !== focused) drawBadge(ctx, tag.badge, tag.style, cssPixel);
+    if (tag !== focused) drawBadge(ctx, tag.badge, tag.look, cssPixel);
   }
   if (focused) {
     const { detection, style } = focused;
@@ -340,11 +352,20 @@ function drawBadge(
   ctx.fillText(text, center.x, center.y + fontSize * 0.05);
 }
 
+/** Tags that aren't being searched for are grey, unlit and faintly outlined. */
+const DIMMED_ALPHA = 0.5;
+
 const NORMAL = {
   color: '#2ef2ff',
   glow: 'rgba(46, 242, 255, 0.07)',
   fill: 'rgba(46, 242, 255, 0.08)',
   corner: '#ff3fd8',
+};
+const DIMMED: Style = {
+  color: '#9097bd',
+  glow: 'transparent',
+  fill: 'transparent',
+  corner: '#9097bd',
 };
 const DUPLICATE = {
   color: '#ff4d6a',

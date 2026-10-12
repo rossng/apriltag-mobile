@@ -62,4 +62,9 @@ export default defineConfig({
   build: {
     target: 'esnext',
   },
+
+  // The detector runs in a module worker.
+  worker: {
+    format: 'es',
+  },
 });

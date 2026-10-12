@@ -1,4 +1,4 @@
-import { test, expect } from './support/test';
+import { test, expect, tagGrid } from './support/test';
 
 test('can be installed as an app', async ({ app, page }) => {
   await app.open();
@@ -15,13 +15,17 @@ test('can be installed as an app', async ({ app, page }) => {
   }
 });
 
-test('works offline once visited', async ({ app, page, context }) => {
+test('works offline once visited', async ({ app, page, context, camera }) => {
   await app.open();
   // Wait until the service worker has cached the app and taken over.
   await page.waitForFunction(() => navigator.serviceWorker.controller);
 
   await context.setOffline(true);
   await app.reload();
+  // Detection needs the detector's worker and WebAssembly from the cache.
+  await camera.show(tagGrid([4, 5]));
+  await app.expectDetectedTags([4, 5]);
+
   await app.viewExample();
   await app.expectFamily('tagStandard52h13');
 });

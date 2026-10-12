@@ -113,14 +113,17 @@ EMSCRIPTEN_KEEPALIVE int atag_render(const char *name, int id) {
 }
 
 // Detects tags in the image buffer, overwriting it with its greyscale
-// version. Returns the number of detections written to atag_results().
-EMSCRIPTEN_KEEPALIVE int atag_detect(int width, int height) {
+// version. Quads are found in an image downsampled by quad_decimate, which is
+// faster but misses smaller tags. Returns the number of detections written to
+// atag_results().
+EMSCRIPTEN_KEEPALIVE int atag_detect(int width, int height, float quad_decimate) {
     int pixels = width * height;
     for (int i = 0; i < pixels; i++) {
         const uint8_t *p = image + 4 * i;
         image[i] = (p[0] + p[1] + p[2] + 1) / 3;
     }
 
+    detector->quad_decimate = quad_decimate;
     image_u8_t grey = {.width = width, .height = height, .stride = width, .buf = image};
     zarray_t *detections = apriltag_detector_detect(detector, &grey);
     int n = zarray_size(detections);
