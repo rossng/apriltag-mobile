@@ -264,10 +264,10 @@ export function App() {
             role="menuitemcheckbox"
             aria-checked={cover()}
             disabled={view().kind === 'image' || view().kind === 'results'}
-            title="Fill the screen with the camera view, cropping its edges"
+            title="Crop the camera view to fill the screen. Turn off to see the whole frame."
             onClick={() => setCover(!cover())}
           >
-            Cover Mode
+            Fill Screen
           </button>
           <button
             role="menuitemcheckbox"
@@ -275,7 +275,7 @@ export function App() {
             title="Warn when the same tag ID appears more than once"
             onClick={() => setDetectDuplicates(!detectDuplicates())}
           >
-            Detect Duplicates
+            Warn on Duplicate IDs
           </button>
           <Show when={cameras().length > 1}>
             <button role="menuitem" onClick={closeMenuThen(nextCamera)}>
@@ -287,7 +287,7 @@ export function App() {
             disabled={busy()}
             onClick={closeMenuThen(() => fileInput.click())}
           >
-            Select Image
+            Upload Image
           </button>
           <button
             role="menuitem"
@@ -299,7 +299,7 @@ export function App() {
               )
             )}
           >
-            View Example
+            Try Example Image
           </button>
           <a
             role="menuitem"
@@ -330,7 +330,7 @@ export function App() {
           <p role="status">{status()}</p>
           <Show when={duplicates().length}>
             <p role="alert">
-              Duplicate marker{duplicates().length > 1 ? 's' : ''}:{' '}
+              Duplicate tag ID{duplicates().length > 1 ? 's' : ''}:{' '}
               {duplicates().join(', ')}
             </p>
           </Show>

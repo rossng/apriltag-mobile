@@ -67,7 +67,7 @@ export class AprilTagApp {
   }
 
   async setDuplicateDetection(enabled: boolean): Promise<void> {
-    await this.setMenuToggle('Detect Duplicates', enabled);
+    await this.setMenuToggle('Warn on Duplicate IDs', enabled);
   }
 
   async switchCamera(): Promise<void> {
@@ -77,7 +77,9 @@ export class AprilTagApp {
 
   async viewExample(): Promise<void> {
     await this.openMenu();
-    await this.page.getByRole('menuitem', { name: 'View Example' }).click();
+    await this.page
+      .getByRole('menuitem', { name: 'Try Example Image' })
+      .click();
     await expect(this.button('Close example')).toBeVisible();
   }
 
@@ -105,7 +107,7 @@ export class AprilTagApp {
   async uploadImage(file: ImageFile): Promise<void> {
     const fileChooser = this.page.waitForEvent('filechooser');
     await this.openMenu();
-    await this.page.getByRole('menuitem', { name: 'Select Image' }).click();
+    await this.page.getByRole('menuitem', { name: 'Upload Image' }).click();
     await (await fileChooser).setFiles(file);
     await expect(this.button('Close image')).toBeVisible();
   }
