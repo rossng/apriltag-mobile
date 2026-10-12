@@ -100,6 +100,12 @@ export class AprilTagApp {
     await expect(this.button('Close example')).toBeVisible();
   }
 
+  /** Uses the example offered when the camera is unavailable. */
+  async viewExampleInstead(): Promise<void> {
+    await this.button('Try Example Image').click();
+    await expect(this.button('Close example')).toBeVisible();
+  }
+
   async selectFamily(family: string): Promise<void> {
     await this.familySelect().click();
     await this.page
