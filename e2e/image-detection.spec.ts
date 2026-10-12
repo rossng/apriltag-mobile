@@ -9,7 +9,7 @@ test('detects tags in an uploaded image', async ({ app, imageFile }) => {
   await app.closeImage();
 });
 
-test('does not check for duplicate markers by default', async ({
+test('does not check for duplicate tag IDs by default', async ({
   app,
   imageFile,
 }) => {
@@ -19,7 +19,7 @@ test('does not check for duplicate markers by default', async ({
   await app.expectDuplicateWarning(null);
 });
 
-test('warns about duplicate markers when enabled', async ({
+test('warns about duplicate tag IDs when enabled', async ({
   app,
   imageFile,
 }) => {
@@ -28,7 +28,7 @@ test('warns about duplicate markers when enabled', async ({
 
   await app.uploadImage(await imageFile(tagGrid([5, 5, 6])));
   await app.expectDetectedTags([5, 5, 6]);
-  await app.expectDuplicateWarning('Duplicate marker: 5');
+  await app.expectDuplicateWarning('Duplicate tag ID: 5');
 
   await app.closeImage();
   await app.expectDuplicateWarning(null);
@@ -43,7 +43,7 @@ test('remembers duplicate detection across reloads', async ({
   await app.reload();
 
   await app.uploadImage(await imageFile(tagGrid([2, 2])));
-  await app.expectDuplicateWarning('Duplicate marker: 2');
+  await app.expectDuplicateWarning('Duplicate tag ID: 2');
 
   await app.setDuplicateDetection(false);
   await app.expectDuplicateWarning(null);
