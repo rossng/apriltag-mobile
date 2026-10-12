@@ -30,6 +30,7 @@ import {
   type LabelSize,
   type Scene,
   type Size,
+  type View as Placement,
 } from './canvas';
 import { createCameraControls } from './camera';
 import { attachGestures } from './gestures';
@@ -172,27 +173,50 @@ export function App() {
     setZoom(NO_ZOOM);
   });
 
+  // Gestures can change the view several times a frame, so draw whatever
+  // is latest once per frame.
+  let frame = 0;
   createEffect(() => {
+    const drawing = {
+      box: box(),
+      view: shown(),
+      scene: scene(),
+      image: still(),
+    };
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(() => draw(drawing));
+  });
+  onCleanup(() => cancelAnimationFrame(frame));
+
+  function draw({
+    box,
+    view,
+    scene,
+    image,
+  }: {
+    box: Size;
+    view?: Placement;
+    scene: Scene;
+    image?: ImageData;
+  }) {
     // Draw at the screen's resolution, so labels stay sharp when zoomed in.
     const ratio = devicePixelRatio;
-    const width = Math.round(box().width * ratio);
-    const height = Math.round(box().height * ratio);
+    const width = Math.round(box.width * ratio);
+    const height = Math.round(box.height * ratio);
     if (canvas.width !== width || canvas.height !== height) {
       Object.assign(canvas, { width, height });
     }
     const ctx = canvas.getContext('2d')!;
     ctx.clearRect(0, 0, width, height);
-    const view = shown();
     if (!view) return;
-    const image = still();
     drawScene(
       ctx,
-      scene(),
+      scene,
       { scale: view.scale * ratio, x: view.x * ratio, y: view.y * ratio },
       1 / view.scale,
       image && drawableImage(image)
     );
-  });
+  }
 
   const camera = createCameraControls();
   const live = () => view().kind === 'live' || view().kind === 'collecting';

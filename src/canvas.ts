@@ -88,8 +88,6 @@ export function drawScene(
     ctx.drawImage(image, 0, 0);
   }
 
-  // Shadows ignore the transform, so they're sized in canvas pixels.
-  const sizes = { css: cssPixel, shadow: cssPixel * view.scale };
   const duplicates = new Set(duplicateIds);
   const tags = detections.map((detection) => ({
     detection,
@@ -98,23 +96,23 @@ export function drawScene(
   }));
 
   for (const { detection, style } of tags) {
-    drawOutline(ctx, detection, style, sizes);
+    drawOutline(ctx, detection, style, cssPixel);
   }
 
   // Labels go above every outline, with the focused one on top of the rest.
   const focused = focus ? tagAt(tags, focus) : undefined;
   for (const tag of tags) {
-    if (tag !== focused) drawBadge(ctx, tag.badge, tag.style, sizes);
+    if (tag !== focused) drawBadge(ctx, tag.badge, tag.style, cssPixel);
   }
   if (focused) {
     const { detection, style } = focused;
     const fontSize = Math.max(focused.badge.fontSize, FOCUSED_FONT * cssPixel);
-    drawOutline(ctx, detection, style, sizes, 3);
+    drawOutline(ctx, detection, style, cssPixel, 3);
     drawBadge(
       ctx,
       badge(ctx, detection, fontSize, cssPixel),
       style,
-      sizes,
+      cssPixel,
       true
     );
   }
@@ -164,12 +162,6 @@ export function drawableImage(image: ImageData): HTMLCanvasElement {
 
 type Style = typeof NORMAL;
 
-/** Image pixels per CSS pixel, and canvas pixels per CSS pixel for shadows. */
-interface Sizes {
-  css: number;
-  shadow: number;
-}
-
 interface Badge {
   text: string;
   center: Point;
@@ -180,6 +172,19 @@ interface Badge {
 
 function font(size: number): string {
   return `600 ${size}px ui-monospace, Menlo, Consolas, monospace`;
+}
+
+const textWidths = new Map<string, number>();
+
+/** A label's width per pixel of font size, measured once per label. */
+function textWidth(ctx: CanvasRenderingContext2D, text: string): number {
+  let width = textWidths.get(text);
+  if (width === undefined) {
+    ctx.font = font(100);
+    width = ctx.measureText(text).width / 100;
+    textWidths.set(text, width);
+  }
+  return width;
 }
 
 /**
@@ -194,15 +199,14 @@ function badge(
   scale: number
 ): Badge {
   const text = String(id);
-  ctx.font = font(100);
-  const textWidth = ctx.measureText(text).width / 100;
+  const width = textWidth(ctx, text);
 
   let fontSize: number;
   if (typeof size === 'number') {
     fontSize = size;
   } else if (size === 'auto') {
     const room = 2 * inradius(center, corners) * 0.85;
-    const fitted = room / Math.max(textWidth + BADGE_PADDING, BADGE_HEIGHT);
+    const fitted = room / Math.max(width + BADGE_PADDING, BADGE_HEIGHT);
     fontSize = Math.min(
       Math.max(fitted, AUTO_FONT.min * scale),
       AUTO_FONT.max * scale
@@ -215,7 +219,7 @@ function badge(
     text,
     center,
     fontSize,
-    width: (textWidth + BADGE_PADDING) * fontSize,
+    width: (width + BADGE_PADDING) * fontSize,
     height: BADGE_HEIGHT * fontSize,
   };
 }
@@ -266,7 +270,7 @@ function drawOutline(
   ctx: CanvasRenderingContext2D,
   { corners }: Detection,
   style: Style,
-  sizes: Sizes,
+  scale: number,
   lineWidth = 2
 ): void {
   // Tinted, glowing outline.
@@ -275,25 +279,43 @@ function drawOutline(
   ctx.closePath();
   ctx.fillStyle = style.fill;
   ctx.fill();
-  ctx.shadowColor = ctx.strokeStyle = style.color;
-  ctx.shadowBlur = 12 * sizes.shadow;
-  ctx.lineWidth = lineWidth * sizes.css;
   ctx.lineJoin = 'round';
+  glow(ctx, style, scale, lineWidth);
+  ctx.strokeStyle = style.color;
+  ctx.lineWidth = lineWidth * scale;
   ctx.stroke();
-  ctx.shadowBlur = 0;
 
   // Marks the tag's top-left corner to show its orientation.
   ctx.fillStyle = style.corner;
   ctx.beginPath();
-  ctx.arc(corners[0].x, corners[0].y, 3.5 * sizes.css, 0, 2 * Math.PI);
+  ctx.arc(corners[0].x, corners[0].y, 3.5 * scale, 0, 2 * Math.PI);
   ctx.fill();
+}
+
+/**
+ * Strokes the current path with wide, faint lines for a neon glow. Canvas
+ * shadows look similar but are very slow in Firefox, where they made
+ * pinch-zooming lag.
+ */
+function glow(
+  ctx: CanvasRenderingContext2D,
+  style: Style,
+  scale: number,
+  lineWidth: number
+): void {
+  // Layers of a faint colour build up into a soft fade.
+  ctx.strokeStyle = style.glow;
+  for (const spread of [14, 10, 6, 3]) {
+    ctx.lineWidth = (lineWidth + spread) * scale;
+    ctx.stroke();
+  }
 }
 
 function drawBadge(
   ctx: CanvasRenderingContext2D,
   { text, center, fontSize, width, height }: Badge,
   style: Style,
-  sizes: Sizes,
+  scale: number,
   focused = false
 ): void {
   ctx.beginPath();
@@ -304,15 +326,11 @@ function drawBadge(
     height,
     height / 2
   );
-  if (focused) {
-    ctx.shadowColor = style.color;
-    ctx.shadowBlur = 16 * sizes.shadow;
-  }
+  if (focused) glow(ctx, style, scale, 2);
   ctx.fillStyle = focused ? style.color : 'rgba(6, 6, 12, 0.85)';
   ctx.fill();
-  ctx.shadowBlur = 0;
   ctx.strokeStyle = style.color;
-  ctx.lineWidth = Math.min(1.5 * sizes.css, fontSize * 0.1);
+  ctx.lineWidth = Math.min(1.5 * scale, fontSize * 0.1);
   ctx.stroke();
 
   ctx.font = font(fontSize);
@@ -324,11 +342,13 @@ function drawBadge(
 
 const NORMAL = {
   color: '#2ef2ff',
+  glow: 'rgba(46, 242, 255, 0.07)',
   fill: 'rgba(46, 242, 255, 0.08)',
   corner: '#ff3fd8',
 };
 const DUPLICATE = {
   color: '#ff4d6a',
+  glow: 'rgba(255, 77, 106, 0.07)',
   fill: 'rgba(255, 77, 106, 0.12)',
   corner: '#ffb547',
 };
