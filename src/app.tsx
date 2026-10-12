@@ -45,6 +45,7 @@ const MODES: Record<Mode, string> = { scan: 'Scan', collect: 'Collect' };
 const FAMILY_KEY = 'selectedFamily';
 const DUPLICATES_KEY = 'detectDuplicates';
 const LABEL_SIZE_KEY = 'labelSize';
+const FILL_SCREEN_KEY = 'fillScreen';
 const ERROR_CORRECTION_KEY = 'errorCorrection';
 const EXAMPLE = { url: 'sample.jpg', family: 'tagStandard52h13' };
 
@@ -73,7 +74,9 @@ export function App() {
   const [detectDuplicates, setDetectDuplicates] = createSignal(
     localStorage.getItem(DUPLICATES_KEY) === 'true'
   );
-  const [cover, setCover] = createSignal(true);
+  const [cover, setCover] = createSignal(
+    localStorage.getItem(FILL_SCREEN_KEY) !== 'false'
+  );
   const savedSize = localStorage.getItem(LABEL_SIZE_KEY) ?? '';
   const [labelSize, setLabelSize] = createSignal<LabelSize>(
     savedSize in LABEL_SIZES ? (savedSize as LabelSize) : 'auto'
@@ -120,6 +123,7 @@ export function App() {
     localStorage.setItem(DUPLICATES_KEY, String(detectDuplicates()))
   );
   createEffect(() => localStorage.setItem(LABEL_SIZE_KEY, labelSize()));
+  createEffect(() => localStorage.setItem(FILL_SCREEN_KEY, String(cover())));
   createEffect(() =>
     localStorage.setItem(ERROR_CORRECTION_KEY, String(bits()))
   );

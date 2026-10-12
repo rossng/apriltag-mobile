@@ -188,6 +188,23 @@ export class AprilTagApp {
     await this.page.keyboard.press('Escape');
   }
 
+  async setFillScreen(enabled: boolean): Promise<void> {
+    await this.button('View options').click();
+    await this.fillScreen().setChecked(enabled);
+    await this.page.keyboard.press('Escape');
+    await expect(this.viewOptions()).toBeHidden();
+  }
+
+  async expectFillScreen(enabled: boolean): Promise<void> {
+    await this.button('View options').click();
+    await expect(this.fillScreen()).toBeChecked({ checked: enabled });
+    await this.page.keyboard.press('Escape');
+  }
+
+  private fillScreen() {
+    return this.viewOptions().getByRole('switch', { name: /^Fill Screen/ });
+  }
+
   private viewOptions() {
     return this.page.getByRole('dialog', { name: 'View Options' });
   }
