@@ -35,9 +35,32 @@ const FOCUSED_FONT = 18;
 const BADGE_PADDING = 0.9;
 const BADGE_HEIGHT = 1.5;
 
-export interface OverlayOptions {
-  /** Drawn behind the detections; otherwise the canvas is transparent. */
-  image?: ImageData;
+export interface Size {
+  width: number;
+  height: number;
+}
+
+/** Maps image pixels onto a canvas: canvas = image × scale + (x, y). */
+export interface View {
+  scale: number;
+  x: number;
+  y: number;
+}
+
+/** The view that fits an image into a box, as CSS object-fit does. */
+export function fitView(image: Size, box: Size, cover: boolean): View {
+  const fit = cover ? Math.max : Math.min;
+  const scale = fit(box.width / image.width, box.height / image.height);
+  return {
+    scale,
+    x: (box.width - image.width * scale) / 2,
+    y: (box.height - image.height * scale) / 2,
+  };
+}
+
+/** What to draw over an image. */
+export interface Scene {
+  detections: Detection[];
   /** IDs to highlight as duplicates. */
   duplicateIds: number[];
   labelSize: LabelSize;
@@ -45,61 +68,78 @@ export interface OverlayOptions {
   focus?: Point | null;
 }
 
-/** Draws detections over a canvas at the given image resolution. */
-export function drawOverlay(
-  canvas: HTMLCanvasElement,
-  detections: Detection[],
-  { width, height }: { width: number; height: number },
-  { image, duplicateIds, labelSize, focus }: OverlayOptions
+/**
+ * Draws a scene, over `image` if given, placed on the canvas by `view`.
+ * `cssPixel` is how many image pixels one CSS pixel covers on screen, which
+ * keeps outlines and labels the same on-screen size at any zoom.
+ */
+export function drawScene(
+  ctx: CanvasRenderingContext2D,
+  { detections, duplicateIds, labelSize, focus }: Scene,
+  view: View,
+  cssPixel: number,
+  image?: CanvasImageSource
 ): void {
-  if (canvas.width !== width || canvas.height !== height) {
-    Object.assign(canvas, { width, height });
+  ctx.save();
+  ctx.setTransform(view.scale, 0, 0, view.scale, view.x, view.y);
+  if (image) {
+    // Show pixels crisply once they're big enough to make out.
+    ctx.imageSmoothingEnabled = view.scale < 2;
+    ctx.drawImage(image, 0, 0);
   }
-  const ctx = canvas.getContext('2d')!;
-  if (image) ctx.putImageData(image, 0, 0);
-  else ctx.clearRect(0, 0, width, height);
 
-  // Work in CSS pixels so outlines and labels look the same whatever the
-  // image resolution.
-  const scale = imagePixelsPerCssPixel(canvas);
+  // Shadows ignore the transform, so they're sized in canvas pixels.
+  const sizes = { css: cssPixel, shadow: cssPixel * view.scale };
   const duplicates = new Set(duplicateIds);
   const tags = detections.map((detection) => ({
     detection,
     style: duplicates.has(detection.id) ? DUPLICATE : NORMAL,
-    badge: badge(ctx, detection, labelSize, scale),
+    badge: badge(ctx, detection, labelSize, cssPixel),
   }));
 
   for (const { detection, style } of tags) {
-    drawOutline(ctx, detection, style, scale);
+    drawOutline(ctx, detection, style, sizes);
   }
 
   // Labels go above every outline, with the focused one on top of the rest.
   const focused = focus ? tagAt(tags, focus) : undefined;
   for (const tag of tags) {
-    if (tag !== focused) drawBadge(ctx, tag.badge, tag.style, scale);
+    if (tag !== focused) drawBadge(ctx, tag.badge, tag.style, sizes);
   }
   if (focused) {
     const { detection, style } = focused;
-    const fontSize = Math.max(focused.badge.fontSize, FOCUSED_FONT * scale);
-    drawOutline(ctx, detection, style, scale, 3);
-    drawBadge(ctx, badge(ctx, detection, fontSize, scale), style, scale, true);
+    const fontSize = Math.max(focused.badge.fontSize, FOCUSED_FONT * cssPixel);
+    drawOutline(ctx, detection, style, sizes, 3);
+    drawBadge(
+      ctx,
+      badge(ctx, detection, fontSize, cssPixel),
+      style,
+      sizes,
+      true
+    );
   }
+  ctx.restore();
 }
 
 /**
- * Captures the overlay as a PNG, at full image resolution. A live overlay is
- * transparent, so the current video frame is drawn underneath it.
+ * Captures an image with its scene drawn over it as a PNG, at the image's
+ * full resolution, with labels sized as they appear on screen.
  */
 export function snapshot(
-  canvas: HTMLCanvasElement,
-  video?: HTMLVideoElement
+  image: CanvasImageSource,
+  { width, height }: Size,
+  scene: Scene,
+  cssPixel: number
 ): Promise<Blob> {
   const out = document.createElement('canvas');
-  out.width = canvas.width;
-  out.height = canvas.height;
-  const ctx = out.getContext('2d')!;
-  if (video) ctx.drawImage(video, 0, 0, out.width, out.height);
-  ctx.drawImage(canvas, 0, 0);
+  Object.assign(out, { width, height });
+  drawScene(
+    out.getContext('2d')!,
+    scene,
+    { scale: 1, x: 0, y: 0 },
+    cssPixel,
+    image
+  );
   return new Promise((resolve, reject) =>
     out.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error('Snapshot failed'))),
@@ -108,30 +148,27 @@ export function snapshot(
   );
 }
 
-/** Converts a position on screen to image pixels on the canvas. */
-export function toImagePoint(
-  canvas: HTMLCanvasElement,
-  clientX: number,
-  clientY: number
-): Point {
-  const box = canvas.getBoundingClientRect();
-  const scale = imagePixelsPerCssPixel(canvas);
-  // object-fit centres the image in the element.
-  return {
-    x: (clientX - box.left - box.width / 2) * scale + canvas.width / 2,
-    y: (clientY - box.top - box.height / 2) * scale + canvas.height / 2,
-  };
-}
+const drawable = new WeakMap<ImageData, HTMLCanvasElement>();
 
-/** How many image pixels one CSS pixel covers, under the canvas's object-fit. */
-function imagePixelsPerCssPixel(canvas: HTMLCanvasElement): number {
-  const box = canvas.getBoundingClientRect();
-  const fit =
-    getComputedStyle(canvas).objectFit === 'cover' ? Math.min : Math.max;
-  return fit(canvas.width / box.width, canvas.height / box.height) || 1;
+/** Image data as something that can be drawn scaled, which ImageData can't. */
+export function drawableImage(image: ImageData): HTMLCanvasElement {
+  let canvas = drawable.get(image);
+  if (!canvas) {
+    canvas = document.createElement('canvas');
+    Object.assign(canvas, { width: image.width, height: image.height });
+    canvas.getContext('2d')!.putImageData(image, 0, 0);
+    drawable.set(image, canvas);
+  }
+  return canvas;
 }
 
 type Style = typeof NORMAL;
+
+/** Image pixels per CSS pixel, and canvas pixels per CSS pixel for shadows. */
+interface Sizes {
+  css: number;
+  shadow: number;
+}
 
 interface Badge {
   text: string;
@@ -229,7 +266,7 @@ function drawOutline(
   ctx: CanvasRenderingContext2D,
   { corners }: Detection,
   style: Style,
-  scale: number,
+  sizes: Sizes,
   lineWidth = 2
 ): void {
   // Tinted, glowing outline.
@@ -239,8 +276,8 @@ function drawOutline(
   ctx.fillStyle = style.fill;
   ctx.fill();
   ctx.shadowColor = ctx.strokeStyle = style.color;
-  ctx.shadowBlur = 12 * scale;
-  ctx.lineWidth = lineWidth * scale;
+  ctx.shadowBlur = 12 * sizes.shadow;
+  ctx.lineWidth = lineWidth * sizes.css;
   ctx.lineJoin = 'round';
   ctx.stroke();
   ctx.shadowBlur = 0;
@@ -248,7 +285,7 @@ function drawOutline(
   // Marks the tag's top-left corner to show its orientation.
   ctx.fillStyle = style.corner;
   ctx.beginPath();
-  ctx.arc(corners[0].x, corners[0].y, 3.5 * scale, 0, 2 * Math.PI);
+  ctx.arc(corners[0].x, corners[0].y, 3.5 * sizes.css, 0, 2 * Math.PI);
   ctx.fill();
 }
 
@@ -256,7 +293,7 @@ function drawBadge(
   ctx: CanvasRenderingContext2D,
   { text, center, fontSize, width, height }: Badge,
   style: Style,
-  scale: number,
+  sizes: Sizes,
   focused = false
 ): void {
   ctx.beginPath();
@@ -269,13 +306,13 @@ function drawBadge(
   );
   if (focused) {
     ctx.shadowColor = style.color;
-    ctx.shadowBlur = 16 * scale;
+    ctx.shadowBlur = 16 * sizes.shadow;
   }
   ctx.fillStyle = focused ? style.color : 'rgba(6, 6, 12, 0.85)';
   ctx.fill();
   ctx.shadowBlur = 0;
   ctx.strokeStyle = style.color;
-  ctx.lineWidth = Math.min(1.5 * scale, fontSize * 0.1);
+  ctx.lineWidth = Math.min(1.5 * sizes.css, fontSize * 0.1);
   ctx.stroke();
 
   ctx.font = font(fontSize);

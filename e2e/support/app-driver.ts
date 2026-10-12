@@ -10,7 +10,7 @@ export interface ImageFile {
 /**
  * Drives the app the way a user would. This is the only place that knows how
  * the UI is structured, and it relies solely on accessible roles/names plus
- * the `detected-tags` test ID — not on the UI framework or component
+ * the `detected-tags` and `picture` test IDs — not on the UI framework or component
  * internals — so tests survive UI rewrites.
  */
 export interface SavedFile {
@@ -104,6 +104,68 @@ export class AprilTagApp {
   async viewExampleInstead(): Promise<void> {
     await this.button('Try Example Image').click();
     await expect(this.button('Close example')).toBeVisible();
+  }
+
+  async zoomIn(): Promise<void> {
+    await this.button('Zoom in').click();
+  }
+
+  async fitToScreen(): Promise<void> {
+    await this.button('Fit to screen').click();
+  }
+
+  /** Asserts the zoom level shown, e.g. `1×` when fitted to the screen. */
+  async expectZoom(level: string): Promise<void> {
+    await expect(this.button('Fit to screen')).toHaveText(level);
+  }
+
+  async expectZoomControls(shown: boolean): Promise<void> {
+    await expect(this.button('Zoom in')).toBeVisible({ visible: shown });
+  }
+
+  async doubleClickPicture(): Promise<void> {
+    await this.picture().dblclick();
+  }
+
+  /** Pinches on a trackpad, which browsers report as Ctrl-scrolling. */
+  async trackpadPinch(deltaY: number): Promise<void> {
+    await this.page.mouse.move(...(await this.pictureCentre()));
+    await this.page.keyboard.down('Control');
+    await this.page.mouse.wheel(0, deltaY);
+    await this.page.keyboard.up('Control');
+  }
+
+  /** Spreads two fingers apart on a touch screen by `spread` pixels each. */
+  async touchPinch(spread: number): Promise<void> {
+    const [x, y] = await this.pictureCentre();
+    const cdp = await this.page.context().newCDPSession(this.page);
+    const fingers = (d: number) => [
+      { x: x - d, y, id: 0 },
+      { x: x + d, y, id: 1 },
+    ];
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: fingers(20),
+    });
+    for (let step = 1; step <= 5; step++) {
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: fingers(20 + (spread * step) / 5),
+      });
+    }
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchEnd',
+      touchPoints: [],
+    });
+  }
+
+  private picture() {
+    return this.page.getByTestId('picture');
+  }
+
+  private async pictureCentre(): Promise<[number, number]> {
+    const box = (await this.picture().boundingBox())!;
+    return [box.x + box.width / 2, box.y + box.height / 2];
   }
 
   async selectFamily(family: string): Promise<void> {

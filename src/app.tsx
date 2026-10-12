@@ -21,13 +21,25 @@ import {
 } from './detector';
 import { FamilyPicker } from './family-picker';
 import {
-  drawOverlay,
+  drawableImage,
+  drawScene,
+  fitView,
   LABEL_SIZES,
   pixels,
   snapshot,
-  toImagePoint,
   type LabelSize,
+  type Scene,
+  type Size,
 } from './canvas';
+import { attachGestures } from './gestures';
+import {
+  MAX_ZOOM,
+  NO_ZOOM,
+  panBy,
+  zoomBy,
+  zoomedView,
+  type Zoom,
+} from './zoom';
 
 type View =
   | { kind: 'live' }
@@ -35,8 +47,6 @@ type View =
   | { kind: 'image'; image: ImageData; example: boolean }
   | { kind: 'collecting'; seen: Set<number> }
   | { kind: 'results'; ids: number[] };
-
-type Size = { width: number; height: number };
 
 /** What the shutter does: freeze a frame, or collect every ID seen. */
 type Mode = 'scan' | 'collect';
@@ -130,46 +140,76 @@ export function App() {
     localStorage.setItem(ERROR_CORRECTION_KEY, String(bits()))
   );
 
-  // A tapped point means nothing once the picture changes.
+  /** The camera view's size in CSS pixels. */
+  const [box, setBox] = createSignal<Size>({ width: 0, height: 0 });
+  const [zoom, setZoom] = createSignal<Zoom>(NO_ZOOM);
+  /** Whether the picture is cropped to fill the view. */
+  const filled = () => cover() && view().kind !== 'image';
+  const pictureSize = () => still() ?? frameSize();
+  /** Where the picture fits in the view, before zooming. */
+  const fit = createMemo(() => {
+    const size = pictureSize();
+    return size && box().width ? fitView(size, box(), filled()) : undefined;
+  });
+  /** Where the picture appears in the view, in CSS pixels. */
+  const shown = () => {
+    const f = fit();
+    return f && zoomedView(f, zoom());
+  };
+  const scene = (): Scene => ({
+    detections: detections(),
+    duplicateIds: duplicates(),
+    labelSize: labelSize(),
+    focus: focus(),
+  });
+
+  // A tapped point or zoom means nothing once the picture or view changes.
   createEffect(() => {
     view();
+    box();
     setFocus(null);
+    setZoom(NO_ZOOM);
   });
 
   createEffect(() => {
-    cover(); // Label sizes depend on object-fit.
+    // Draw at the screen's resolution, so labels stay sharp when zoomed in.
+    const ratio = devicePixelRatio;
+    const width = Math.round(box().width * ratio);
+    const height = Math.round(box().height * ratio);
+    if (canvas.width !== width || canvas.height !== height) {
+      Object.assign(canvas, { width, height });
+    }
+    const ctx = canvas.getContext('2d')!;
+    ctx.clearRect(0, 0, width, height);
+    const view = shown();
+    if (!view) return;
     const image = still();
-    const size = image ?? frameSize() ?? { width: 0, height: 0 };
-    drawOverlay(canvas, detections(), size, {
-      image,
-      duplicateIds: duplicates(),
-      labelSize: labelSize(),
-      focus: focus(),
-    });
+    drawScene(
+      ctx,
+      scene(),
+      { scale: view.scale * ratio, x: view.x * ratio, y: view.y * ratio },
+      1 / view.scale,
+      image && drawableImage(image)
+    );
   });
 
-  /** Focuses the tag under the mouse, or under a tap on touch screens. */
-  const pointAt = (hover: boolean) => (e: PointerEvent) => {
-    if ((e.pointerType === 'mouse') === hover) {
-      setFocus(toImagePoint(canvas, e.clientX, e.clientY));
-    }
-  };
+  /** Zooms the still picture, about the middle of the view by default. */
+  function zoomStill(
+    factor: number,
+    at = { x: box().width / 2, y: box().height / 2 }
+  ) {
+    const f = fit();
+    const image = still();
+    if (f && image)
+      setZoom((z) => zoomBy(z, factor, at, { fit: f, image, box: box() }));
+  }
 
-  // Swiping sideways across the live view switches mode, as in camera apps.
-  let swipeFrom: Point | undefined;
-  const startSwipe = (e: PointerEvent) => {
-    swipeFrom =
-      e.pointerType === 'mouse' ? undefined : { x: e.clientX, y: e.clientY };
-  };
-  const endSwipe = (e: PointerEvent) => {
-    if (!swipeFrom || view().kind !== 'live') return;
-    const dx = e.clientX - swipeFrom.x;
-    const dy = e.clientY - swipeFrom.y;
-    swipeFrom = undefined;
-    if (Math.abs(dx) > 50 && Math.abs(dx) > 2 * Math.abs(dy)) {
-      setMode(dx < 0 ? 'collect' : 'scan');
-    }
-  };
+  function panStill(dx: number, dy: number) {
+    const f = fit();
+    const image = still();
+    if (f && image)
+      setZoom((z) => panBy(z, dx, dy, { fit: f, image, box: box() }));
+  }
 
   /** Feeds every new camera frame to the detector while in a live view. */
   function watchFrames() {
@@ -230,6 +270,52 @@ export function App() {
 
   onMount(() => {
     startCamera();
+
+    const resize = new ResizeObserver(() => {
+      const { width, height } = canvas.getBoundingClientRect();
+      setBox({ width, height });
+    });
+    resize.observe(canvas);
+
+    const detachGestures = attachGestures(canvas, {
+      zoomable: () => !!still(),
+      pannable: () => !!still(),
+      zoom: zoomStill,
+      pan: panStill,
+      toggleZoom: (at) =>
+        zoom().k > 1 ? setZoom(NO_ZOOM) : zoomStill(2.5, at),
+      point: (at) => {
+        const view = shown();
+        setFocus(
+          at && view
+            ? {
+                x: (at.x - view.x) / view.scale,
+                y: (at.y - view.y) / view.scale,
+              }
+            : null
+        );
+      },
+      // As in camera apps, swiping sideways switches mode.
+      swipe: (direction) => {
+        if (view().kind === 'live') {
+          setMode(direction === 'left' ? 'collect' : 'scan');
+        }
+      },
+    });
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!still() || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === '+' || e.key === '=') zoomStill(1.5);
+      else if (e.key === '-') zoomStill(1 / 1.5);
+      else if (e.key === '0') setZoom(NO_ZOOM);
+    };
+    document.addEventListener('keydown', onKeyDown);
+
+    onCleanup(() => {
+      resize.disconnect();
+      detachGestures();
+      document.removeEventListener('keydown', onKeyDown);
+    });
     // Mobile browsers can stop the camera video while the page is hidden.
     const onVisible = () => {
       if (document.hidden || !stream) return;
@@ -271,7 +357,13 @@ export function App() {
   const exportable = () => !results() && !!(still() || frameSize());
 
   async function saveImage() {
-    const blob = await snapshot(canvas, still() ? undefined : video);
+    const image = still();
+    const size = pictureSize();
+    const f = fit();
+    if (!size || !f) return;
+    // Labels as they look on screen, without any zoom.
+    const source = image ? drawableImage(image) : video;
+    const blob = await snapshot(source, size, scene(), 1 / f.scale);
     download(blob, fileName(family(), 'png'));
   }
 
@@ -482,19 +574,38 @@ export function App() {
         />
       </header>
 
-      <main
-        classList={{ cover: cover() && view().kind !== 'image' }}
-        onPointerDown={startSwipe}
-        onPointerUp={endSwipe}
-      >
+      <main classList={{ cover: filled() }}>
         <video ref={video} autoplay muted playsinline />
         <canvas
           ref={canvas}
-          classList={{ still: !!still() }}
-          onPointerMove={pointAt(true)}
-          onPointerDown={pointAt(false)}
-          onPointerLeave={(e) => e.pointerType === 'mouse' && setFocus(null)}
+          data-testid="picture"
+          classList={{ still: !!still(), zoomed: zoom().k > 1 }}
         />
+        <Show when={still()}>
+          <div class="zoom-controls" role="group" aria-label="Zoom">
+            <button
+              aria-label="Zoom in"
+              disabled={zoom().k >= MAX_ZOOM}
+              onClick={() => zoomStill(1.5)}
+            >
+              {ICONS.plus()}
+            </button>
+            <button
+              aria-label="Fit to screen"
+              disabled={zoom().k === 1}
+              onClick={() => setZoom(NO_ZOOM)}
+            >
+              {formatZoom(zoom().k)}
+            </button>
+            <button
+              aria-label="Zoom out"
+              disabled={zoom().k === 1}
+              onClick={() => zoomStill(1 / 1.5)}
+            >
+              {ICONS.minus()}
+            </button>
+          </div>
+        </Show>
         <Show when={view().kind === 'live' && !frameSize()}>
           <div class="empty">
             <Show
@@ -706,6 +817,11 @@ function Results(props: {
   );
 }
 
+/** e.g. 2.5×, relative to fitting the screen. */
+function formatZoom(k: number): string {
+  return `${k < 10 ? Number(k.toFixed(1)) : Math.round(k)}×`;
+}
+
 /** One ID per line. */
 function tagList(ids: number[]): Blob {
   return new Blob([ids.map((id) => `${id}\n`).join('')], {
@@ -815,6 +931,22 @@ const ICONS = {
       stroke-width="1.5"
       stroke-linecap="round"
       stroke-linejoin="round"
+    />
+  )),
+  plus: icon(() => (
+    <path
+      d="M12 5v14M5 12h14"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+    />
+  )),
+  minus: icon(() => (
+    <path
+      d="M5 12h14"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
     />
   )),
   more: icon(() => (
