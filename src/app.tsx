@@ -21,6 +21,7 @@ type View =
 type Size = { width: number; height: number };
 
 const FAMILY_KEY = 'selectedFamily';
+const DUPLICATES_KEY = 'detectDuplicates';
 const EXAMPLE = { url: 'sample.jpg', family: 'tagStandard52h13' };
 
 export function App() {
@@ -30,6 +31,9 @@ export function App() {
     saved in FAMILIES ? saved : 'tag36h11'
   );
   const [recordMode, setRecordMode] = createSignal(false);
+  const [detectDuplicates, setDetectDuplicates] = createSignal(
+    localStorage.getItem(DUPLICATES_KEY) === 'true'
+  );
   const [cover, setCover] = createSignal(true);
   const [liveDetections, setLiveDetections] = createSignal<Detection[]>([]);
   /** Camera frame size, or null until the camera has produced a frame. */
@@ -63,15 +67,19 @@ export function App() {
     const v = view();
     return v.kind === 'results' ? v.ids : undefined;
   };
-  const duplicates = () => (recorded() ? [] : findDuplicateIds(detections()));
+  const duplicates = () =>
+    detectDuplicates() && !recorded() ? findDuplicateIds(detections()) : [];
 
   createEffect(() => localStorage.setItem(FAMILY_KEY, family()));
+  createEffect(() =>
+    localStorage.setItem(DUPLICATES_KEY, String(detectDuplicates()))
+  );
 
   createEffect(() => {
     cover(); // The label size depends on object-fit.
     const image = still();
     const size = image ?? frameSize() ?? { width: 0, height: 0 };
-    drawOverlay(canvas, detections(), size, image);
+    drawOverlay(canvas, detections(), duplicates(), size, image);
   });
 
   /** Feeds every new camera frame to the detector while in a live view. */
@@ -246,6 +254,14 @@ export function App() {
             onClick={() => setCover(!cover())}
           >
             Cover Mode
+          </button>
+          <button
+            role="menuitemcheckbox"
+            aria-checked={detectDuplicates()}
+            title="Warn when the same tag ID appears more than once"
+            onClick={() => setDetectDuplicates(!detectDuplicates())}
+          >
+            Detect Duplicates
           </button>
           <Show when={cameras().length > 1}>
             <button role="menuitem" onClick={closeMenuThen(nextCamera)}>

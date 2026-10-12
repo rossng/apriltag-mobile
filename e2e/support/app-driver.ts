@@ -63,15 +63,11 @@ export class AprilTagApp {
   }
 
   async setRecordMode(enabled: boolean): Promise<void> {
-    await this.openMenu();
-    const toggle = this.page.getByRole('menuitemcheckbox', {
-      name: 'Record Mode',
-    });
-    if ((await toggle.getAttribute('aria-checked')) !== String(enabled)) {
-      await toggle.click();
-    }
-    await expect(toggle).toBeChecked({ checked: enabled });
-    await this.closeMenu();
+    await this.setMenuToggle('Record Mode', enabled);
+  }
+
+  async setDuplicateDetection(enabled: boolean): Promise<void> {
+    await this.setMenuToggle('Detect Duplicates', enabled);
   }
 
   async switchCamera(): Promise<void> {
@@ -158,6 +154,16 @@ export class AprilTagApp {
 
   private button(name: string) {
     return this.page.getByRole('button', { name, exact: true });
+  }
+
+  private async setMenuToggle(name: string, enabled: boolean): Promise<void> {
+    await this.openMenu();
+    const toggle = this.page.getByRole('menuitemcheckbox', { name });
+    if ((await toggle.getAttribute('aria-checked')) !== String(enabled)) {
+      await toggle.click();
+    }
+    await expect(toggle).toBeChecked({ checked: enabled });
+    await this.closeMenu();
   }
 
   private familySelect() {
