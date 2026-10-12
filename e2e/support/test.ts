@@ -2,6 +2,7 @@ import { test as base } from '@playwright/test';
 import { AprilTagApp, type ImageFile } from './app-driver';
 import {
   installBrowserHarness,
+  type CameraSettings,
   type FakeCameraOptions,
 } from './browser-harness';
 import { loadTagImages, type Scene } from './scene';
@@ -25,6 +26,8 @@ interface Fixtures {
 export interface FakeCamera {
   /** Points the fake camera at a scene. Only valid once the app is open. */
   show(scene: Scene): Promise<void>;
+  /** The zoom and torch the app has set, with `phoneControls`. */
+  settings(): Promise<CameraSettings>;
 }
 
 export const test = base.extend<Fixtures & Options>({
@@ -45,6 +48,7 @@ export const test = base.extend<Fixtures & Options>({
   camera: async ({ page }, use) => {
     await use({
       show: (scene) => page.evaluate((s) => window.__e2e.camera.show(s), scene),
+      settings: () => page.evaluate(() => window.__e2e.camera.settings()),
     });
   },
 

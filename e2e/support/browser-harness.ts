@@ -11,6 +11,14 @@ export interface FakeCameraOptions {
   devices: number;
   /** Rejects camera access as if the user denied permission. */
   denied: boolean;
+  /** Reports a zoomable lens and a torch, as phone cameras often do. */
+  phoneControls?: boolean;
+}
+
+/** The zoom and torch the app has set on the fake camera. */
+export interface CameraSettings {
+  zoom: number;
+  torch: boolean;
 }
 
 export interface BrowserHarness {
@@ -19,6 +27,7 @@ export interface BrowserHarness {
   camera: {
     /** Changes what the fake camera is pointing at. */
     show(scene: Scene): Promise<void>;
+    settings(): CameraSettings;
   };
 }
 
@@ -134,9 +143,23 @@ export function installBrowserHarness({ tagImages, camera }: HarnessOptions) {
         'NotFoundError'
       );
     }
-    return cameraCanvas.captureStream(camera.fps);
+    const stream = cameraCanvas.captureStream(camera.fps);
+    if (camera.phoneControls) {
+      const track = stream.getVideoTracks()[0];
+      const getSettings = track.getSettings.bind(track);
+      track.getCapabilities = () =>
+        ({ zoom: { min: 1, max: 8, step: 0.1 }, torch: true }) as never;
+      track.getSettings = () => ({ ...getSettings(), ...cameraSettings });
+      track.applyConstraints = async (constraints) => {
+        for (const set of constraints?.advanced ?? []) {
+          Object.assign(cameraSettings, set);
+        }
+      };
+    }
+    return stream;
   };
   navigator.mediaDevices.enumerateDevices = async () => fakeDevices;
+  const cameraSettings = { zoom: 1, torch: false };
 
   window.__e2e = {
     async renderPng(scene) {
@@ -146,6 +169,7 @@ export function installBrowserHarness({ tagImages, camera }: HarnessOptions) {
       async show(scene) {
         currentFrame = await renderScene(scene);
       },
+      settings: () => ({ ...cameraSettings }),
     },
   };
 }

@@ -1,4 +1,4 @@
-import { test, tagGrid } from './support/test';
+import { test, expect, tagGrid } from './support/test';
 
 test.describe('with two cameras', () => {
   test.use({ fakeCamera: { devices: 2, denied: false } });
@@ -34,4 +34,34 @@ test.describe('with camera access denied', () => {
     await app.viewExampleInstead();
     await app.expectFamily('tagStandard52h13');
   });
+});
+
+test.describe('with a phone camera', () => {
+  test.use({ fakeCamera: { devices: 1, denied: false, phoneControls: true } });
+
+  test('zooms the camera itself', async ({ app, camera }) => {
+    await app.open();
+    await app.expectZoom('1×');
+    await app.zoomIn();
+    await app.expectZoom('1.5×');
+    await expect.poll(async () => (await camera.settings()).zoom).toBe(1.5);
+
+    await app.resetZoom();
+    await expect.poll(async () => (await camera.settings()).zoom).toBe(1);
+  });
+
+  test('turns the torch on and off', async ({ app, camera }) => {
+    await app.open();
+    await app.expectTorch(false);
+    await app.toggleTorch();
+    await app.expectTorch(true);
+    await expect.poll(async () => (await camera.settings()).torch).toBe(true);
+    await app.toggleTorch();
+    await expect.poll(async () => (await camera.settings()).torch).toBe(false);
+  });
+});
+
+test('shows no camera controls when the camera has none', async ({ app }) => {
+  await app.open();
+  await app.expectZoomControls(false);
 });

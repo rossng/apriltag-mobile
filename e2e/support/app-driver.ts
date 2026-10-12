@@ -110,13 +110,24 @@ export class AprilTagApp {
     await this.button('Zoom in').click();
   }
 
-  async fitToScreen(): Promise<void> {
-    await this.button('Fit to screen').click();
+  async resetZoom(): Promise<void> {
+    await this.button('Reset zoom').click();
   }
 
-  /** Asserts the zoom level shown, e.g. `1×` when fitted to the screen. */
+  /** Asserts the zoom level shown, e.g. `1×` when not zoomed. */
   async expectZoom(level: string): Promise<void> {
-    await expect(this.button('Fit to screen')).toHaveText(level);
+    await expect(this.button('Reset zoom')).toHaveText(level);
+  }
+
+  async toggleTorch(): Promise<void> {
+    await this.button('Torch').click();
+  }
+
+  async expectTorch(on: boolean): Promise<void> {
+    await expect(this.button('Torch')).toHaveAttribute(
+      'aria-pressed',
+      String(on)
+    );
   }
 
   async expectZoomControls(shown: boolean): Promise<void> {
