@@ -215,30 +215,13 @@ select option {
   background: var(--cyan-soft);
 }
 
-/* Separate the settings from the actions. */
-#menu > [role='menuitemcheckbox'] + [role='menuitem'] {
-  margin-top: 7px;
-  position: relative;
-}
-
-#menu > [role='menuitemcheckbox'] + [role='menuitem']::before {
-  content: '';
-  position: absolute;
-  top: -4px;
-  left: 12px;
-  right: 12px;
-  border-top: 1px solid var(--line);
-}
-
 #menu > a::after {
   content: '↗';
   color: var(--text-dim);
 }
 
-/* Toggle switches, in menus and forms. */
-[role='menuitemcheckbox']::after,
+/* Toggle switches. */
 input[role='switch'] {
-  content: '';
   flex: none;
   width: 36px;
   height: 20px;
@@ -251,7 +234,6 @@ input[role='switch'] {
     box-shadow 0.2s;
 }
 
-[role='menuitemcheckbox'][aria-checked='true']::after,
 input[role='switch']:checked {
   background:
     radial-gradient(circle at 26px 50%, #fff 6px, transparent 7px),
@@ -270,6 +252,8 @@ main {
   background: #000;
   border-radius: var(--radius);
   box-shadow: 0 0 0 1px var(--line);
+  /* Leave sideways swipes to the app, for switching mode. */
+  touch-action: pinch-zoom;
 }
 
 /* Viewfinder corner brackets. */
@@ -374,7 +358,7 @@ canvas.still {
   white-space: nowrap;
 }
 
-/* Recorded tags */
+/* Collected tags */
 
 .results {
   position: absolute;
@@ -475,11 +459,73 @@ footer {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  padding: 16px max(16px, env(safe-area-inset-right))
+  padding: 10px max(16px, env(safe-area-inset-right))
     max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
 }
 
+/* Mode switch above the shutter, as in camera apps. */
+.modes {
+  grid-column: 1 / -1;
+  justify-self: center;
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.modes label {
+  position: relative;
+  padding: 4px 12px 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.modes input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.modes label:has(:checked) {
+  color: var(--cyan);
+  text-shadow: 0 0 10px rgba(46, 242, 255, 0.6);
+}
+
+.modes label:has(:checked)::after {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 4px;
+  height: 4px;
+  content: '';
+  border-radius: 50%;
+  background: currentColor;
+  transform: translateX(-50%);
+}
+
+.modes label:has(:disabled) {
+  cursor: not-allowed;
+}
+
+.modes label:has(:disabled:not(:checked)) {
+  opacity: 0.4;
+}
+
+.modes label:has(:focus-visible) {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 .readout {
+  grid-row: 2;
   grid-column: 1;
   justify-self: start;
   font-size: 14px;
@@ -501,12 +547,9 @@ footer {
   font-size: 12px;
 }
 
-.readout[data-mode='recording'] small {
-  color: var(--red);
-}
-
 .capture {
   position: relative;
+  grid-row: 2;
   grid-column: 2;
   display: flex;
   align-items: center;
@@ -550,34 +593,34 @@ footer {
   height: 26px;
 }
 
-/* Ready to record: a classic red record button. */
-.capture[data-record] {
+/* Ready to collect: a classic red record button. */
+.capture[data-collect] {
   border-color: var(--red);
   box-shadow: 0 0 22px rgba(255, 77, 106, 0.5);
 }
 
-.capture[data-record]::before {
+.capture[data-collect]::before {
   background: radial-gradient(circle at 35% 30%, #ff94a6, var(--red) 70%);
 }
 
-.capture[data-record] svg {
+.capture[data-collect] svg {
   display: none;
 }
 
-/* Recording: the disc shrinks to a stop square. */
-.capture[data-state='recording'] {
+/* Collecting: the disc shrinks to a stop square. */
+.capture[data-state='collecting'] {
   border-color: var(--red);
-  animation: recording 1.6s ease-in-out infinite;
+  animation: collecting 1.6s ease-in-out infinite;
 }
 
-.capture[data-state='recording']::before {
+.capture[data-state='collecting']::before {
   width: 28px;
   height: 28px;
   border-radius: 6px;
   background: var(--red);
 }
 
-.capture[data-state='recording'] svg {
+.capture[data-state='collecting'] svg {
   display: none;
 }
 
@@ -607,13 +650,14 @@ footer {
   height: 20px;
 }
 
-@keyframes recording {
+@keyframes collecting {
   50% {
     box-shadow: 0 0 34px rgba(255, 77, 106, 0.8);
   }
 }
 
 .view-button {
+  grid-row: 2;
   grid-column: 3;
   justify-self: end;
   display: flex;
