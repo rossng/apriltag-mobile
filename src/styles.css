@@ -1180,6 +1180,114 @@ input[role='switch'] {
   }
 }
 
+/* Phones held sideways: like a camera app, the controls move to a rail on
+   the right so the camera view keeps its height. */
+@media (orientation: landscape) and (max-height: 540px) {
+  #app {
+    display: grid;
+    grid-template: auto 1fr / 1fr auto;
+    grid-template-areas:
+      'header footer'
+      'main footer';
+  }
+
+  header {
+    grid-area: header;
+    padding-top: max(6px, env(safe-area-inset-top));
+    padding-bottom: 6px;
+    padding-right: 8px;
+  }
+
+  main {
+    grid-area: main;
+    margin: 0 0 max(8px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
+  }
+
+  footer {
+    grid-area: footer;
+    grid-template: auto 1fr auto auto 1fr auto / auto;
+    justify-items: center;
+    padding: max(10px, env(safe-area-inset-top))
+      max(12px, env(safe-area-inset-right))
+      max(10px, env(safe-area-inset-bottom)) 12px;
+  }
+
+  .view-button {
+    grid-area: 1 / 1;
+    justify-self: center;
+  }
+
+  .modes {
+    grid-area: 3 / 1;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+
+  /* Stacked, the dot goes beside the mode rather than between two. */
+  .modes label {
+    padding: 6px 14px;
+  }
+
+  .modes label:has(:checked)::after {
+    left: 2px;
+    bottom: 50%;
+    transform: translateY(50%);
+  }
+
+  .capture {
+    grid-area: 4 / 1;
+  }
+
+  /* The rail is too narrow for a labelled pill, so caption the button. */
+  .capture:has(span) {
+    width: 72px;
+    padding: 5px;
+    border-radius: 50%;
+  }
+
+  .capture:has(span)::before {
+    inset: auto;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+  }
+
+  .capture span {
+    position: absolute;
+    top: calc(100% + 8px);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .readout {
+    grid-area: 6 / 1;
+    justify-self: center;
+    text-align: center;
+  }
+
+  #view-options {
+    position-area: left span-bottom;
+    margin: 0 10px 0 0;
+  }
+
+  .results .count {
+    font-size: 48px;
+  }
+}
+
+@supports not (position-area: left) {
+  @media (orientation: landscape) and (max-height: 540px) {
+    #view-options {
+      top: 12px;
+      right: 110px;
+      bottom: auto;
+    }
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   ::before,
