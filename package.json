@@ -13,12 +13,12 @@
     "test:e2e": "playwright test"
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0",
+    "@playwright/test": "^1.64.0",
     "@types/emscripten": "^1.41.6",
     "@types/node": "^26.6.5",
-    "prettier": "^3.9.9",
+    "prettier": "^3.9.10",
     "typescript": "^7.0.2",
-    "vite": "^8.3.3",
+    "vite": "^8.3.4",
     "vite-plugin-solid": "^2.11.14"
   },
   "repository": {
