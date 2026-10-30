@@ -5,6 +5,9 @@ detector is the upstream [AprilRobotics/apriltag](https://github.com/AprilRoboti
 C library compiled to WebAssembly via Emscripten, driven from TypeScript /
 [Solid](https://www.solidjs.com/).
 
+The detector and tag generator also support the legacy **tag25h7** family
+(242 tags, IDs 0–241), using a bundled codebook adapted for AprilTag 3.
+
 ## Local Development
 
 The whole build is driven by Nix. `apriltag-src` is fetched as a flake input

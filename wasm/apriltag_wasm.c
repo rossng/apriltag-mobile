@@ -10,6 +10,7 @@
 
 #include "apriltag.h"
 #include "tag16h5.h"
+#include "tag25h7.h"
 #include "tag25h9.h"
 #include "tag36h11.h"
 #include "tagCircle21h7.h"
@@ -31,7 +32,7 @@ typedef struct {
 static const family_def FAMILIES[] = {
     FAMILY(tag36h11),         FAMILY(tag25h9),          FAMILY(tag16h5),
     FAMILY(tagStandard41h12), FAMILY(tagStandard52h13), FAMILY(tagCircle21h7),
-    FAMILY(tagCircle49h12),   FAMILY(tagCustom48h12),
+    FAMILY(tagCircle49h12),   FAMILY(tagCustom48h12),   FAMILY(tag25h7),
 };
 
 static apriltag_detector_t *detector;

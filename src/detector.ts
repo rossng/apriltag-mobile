@@ -14,6 +14,7 @@ export interface Detection {
 export const FAMILIES: Record<string, number> = {
   tag36h11: 587,
   tag25h9: 35,
+  tag25h7: 242,
   tag16h5: 30,
   tagStandard41h12: 2115,
   tagStandard52h13: 48714,
