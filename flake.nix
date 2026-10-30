@@ -47,11 +47,12 @@
               -s ENVIRONMENT=worker \
               -s ALLOW_MEMORY_GROWTH=1 \
               -s EXPORTED_RUNTIME_METHODS='["ccall", "HEAPU8", "HEAPF64"]' \
-              -I${apriltag-src} \
+              -I${apriltag-src} -I${./wasm} \
               --emit-tsd apriltag_wasm.d.ts \
               -o out/apriltag_wasm.js \
               $(ls ${apriltag-src}/*.c ${apriltag-src}/common/*.c | grep -v apriltag_pywrap.c) \
-              ${./wasm/apriltag_wasm.c}
+              ${./wasm/apriltag_wasm.c} \
+              ${./wasm/tag25h7.c}
 
             runHook postBuild
           '';
