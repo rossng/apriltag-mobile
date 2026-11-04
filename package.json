@@ -13,13 +13,13 @@
     "test:e2e": "playwright test"
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0",
+    "@playwright/test": "^1.64.1",
     "@types/emscripten": "^1.41.6",
-    "@types/node": "^26.6.5",
-    "prettier": "^3.9.9",
+    "@types/node": "^26.6.6",
+    "prettier": "^3.9.10",
     "typescript": "^7.0.2",
-    "vite": "^8.3.3",
-    "vite-plugin-solid": "^2.11.14"
+    "vite": "^8.3.5",
+    "vite-plugin-solid": "^2.11.15"
   },
   "repository": {
     "type": "git",
@@ -33,6 +33,6 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "solid-js": "^1.9.17"
+    "solid-js": "^1.9.18"
   }
 }
